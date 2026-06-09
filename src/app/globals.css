@@ -1,0 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@vandrei/finance-ui/tokens.css";
+@import "@vandrei/finance-ui/typography.css";
+@source "../../node_modules/@vandrei/finance-ui/dist";
