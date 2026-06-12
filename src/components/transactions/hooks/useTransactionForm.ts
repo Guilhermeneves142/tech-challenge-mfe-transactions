@@ -1,19 +1,32 @@
-
-
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { api } from "@/lib/api";
-import type { TransactionFormState, TransactionFormType, CreateTransactionPayload, TransactionModalMode } from "../types";
+import { fileToDataUrl, validateAttachmentFile } from "@/lib/file";
+import type {
+  TransactionFormState,
+  TransactionFormType,
+  CreateTransactionPayload,
+  TransactionModalMode,
+} from "../types";
 import type { Transaction } from "@/lib/api";
 
-const INITIAL_STATE: TransactionFormState = {
-  description: "",
-  amount: "",
-  category: "",
-  date: "",
-  type: "credit",
-};
+function buildInitialState(
+  initialData?: Partial<TransactionFormState>,
+): TransactionFormState {
+  return {
+    description: "",
+    amount: "",
+    category: "",
+    date: "",
+    type: "credit",
+    attachment: "",
+    ...initialData,
+    attachmentName:
+      initialData?.attachmentName ??
+      (initialData?.attachment ? "Anexo existente" : undefined),
+  };
+}
 
 interface UseTransactionFormOptions {
   mode?: TransactionModalMode;
@@ -23,15 +36,23 @@ interface UseTransactionFormOptions {
   onClose: () => void;
 }
 
-export function useTransactionForm({ mode = "create", transactionId, initialData, onSuccess, onClose }: UseTransactionFormOptions) {
-  const [form, setForm] = useState<TransactionFormState>({
-    ...INITIAL_STATE,
-    ...initialData,
-  });
+export function useTransactionForm({
+  mode = "create",
+  transactionId,
+  initialData,
+  onSuccess,
+  onClose,
+}: UseTransactionFormOptions) {
+  const [form, setForm] = useState<TransactionFormState>(() =>
+    buildInitialState(initialData),
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function setField<K extends keyof TransactionFormState>(key: K, value: TransactionFormState[K]) {
+  function setField<K extends keyof TransactionFormState>(
+    key: K,
+    value: TransactionFormState[K],
+  ) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -40,8 +61,37 @@ export function useTransactionForm({ mode = "create", transactionId, initialData
   }
 
   function reset() {
-    setForm({ ...INITIAL_STATE, ...initialData });
+    setForm(buildInitialState(initialData));
     setError(null);
+  }
+
+  async function setAttachmentFile(file: File | null) {
+    if (!file) {
+      setForm((prev) => ({
+        ...prev,
+        attachment: "",
+        attachmentName: undefined,
+      }));
+      return;
+    }
+
+    const validationError = validateAttachmentFile(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setError(null);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      setForm((prev) => ({
+        ...prev,
+        attachment: dataUrl,
+        attachmentName: file.name,
+      }));
+    } catch {
+      setError("Não foi possível ler o arquivo. Tente novamente.");
+    }
   }
 
   function validate(): string | null {
@@ -65,7 +115,11 @@ export function useTransactionForm({ mode = "create", transactionId, initialData
 
     const rawAmount = parseFloat(form.amount.replace(",", "."));
     const now = new Date();
-    const dateLabel = format(new Date(`${form.date}T${format(now, "HH:mm:ss")}`), "dd MMM, HH:mm", { locale: ptBR });
+    const dateLabel = format(
+      new Date(`${form.date}T${format(now, "HH:mm:ss")}`),
+      "dd MMM, HH:mm",
+      { locale: ptBR },
+    );
 
     const payload: CreateTransactionPayload = {
       description: form.description.trim(),
@@ -74,13 +128,16 @@ export function useTransactionForm({ mode = "create", transactionId, initialData
       date: new Date(form.date).toISOString(),
       dateLabel,
       type: form.type,
+      attachment: form.attachment || "",
+      attachmentName: form.attachmentName || "",
     };
 
     setLoading(true);
     try {
-      const result = mode === "edit" && transactionId
-        ? await api.updateTransaction(transactionId, payload)
-        : await api.createTransaction(payload);
+      const result =
+        mode === "edit" && transactionId
+          ? await api.updateTransaction(transactionId, payload)
+          : await api.createTransaction(payload);
       onSuccess?.(result);
       reset();
       onClose();
@@ -96,5 +153,15 @@ export function useTransactionForm({ mode = "create", transactionId, initialData
     onClose();
   }
 
-  return { form, loading, error, setField, setType, handleSubmit, handleCancel, reset };
+  return {
+    form,
+    loading,
+    error,
+    setField,
+    setType,
+    setAttachmentFile,
+    handleSubmit,
+    handleCancel,
+    reset,
+  };
 }

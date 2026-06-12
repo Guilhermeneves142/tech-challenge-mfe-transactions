@@ -11,6 +11,8 @@ export interface CreateTransactionPayload {
   date: string;
   dateLabel: string;
   type: TransactionFormType;
+  attachment: string;
+  attachmentName?: string;
 }
 
 export interface TransactionFormState {
@@ -19,6 +21,8 @@ export interface TransactionFormState {
   category: string;
   date: string;
   type: TransactionFormType;
+  attachment?: string;
+  attachmentName?: string;
 }
 
 export interface TransactionModalProps {
