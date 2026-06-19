@@ -44,6 +44,7 @@ export function TransactionPageClient() {
   const loadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const loadingInitialRef = useRef(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -51,7 +52,7 @@ export function TransactionPageClient() {
 
   const [summary, setSummary] = useState<TransactionSummary | undefined>();
   const [categories, setCategories] = useState<Category[]>([]);
-  //const [loading, setLoading] = useState(true);
+
 
   const [filterDescription, setFilterDescription] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -64,6 +65,7 @@ export function TransactionPageClient() {
   const [editingId, setEditingId] = useState<number | undefined>();
 
   const fetchData = useCallback(async () => {
+    loadingInitialRef.current = true;
     setLoadingInitial(true);
 
     pageRef.current = 1;
@@ -87,15 +89,18 @@ export function TransactionPageClient() {
     setCategories(cats);
     hasMoreRef.current = txs.length === PAGE_SIZE;
     setHasMore(txs.length === PAGE_SIZE);
+    loadingInitialRef.current = false;
     setLoadingInitial(false);
 
   }, [filterDescription, filterType, filterRange]);
 
   const fetchMore = useCallback(async () => {
-    if (loadingMoreRef.current || !hasMoreRef.current) return;
+    if (loadingMoreRef.current || !hasMoreRef.current || loadingInitialRef.current) return;
 
     loadingMoreRef.current = true;
     setLoadingMore(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
 
     const nextPage = pageRef.current + 1;
     const params: TransactionParams = { _page: nextPage, _limit: PAGE_SIZE };
@@ -128,7 +133,7 @@ export function TransactionPageClient() {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [fetchMore]);
+  }, [fetchMore, loadingInitial]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -343,12 +348,15 @@ export function TransactionPageClient() {
         </div>
       ) : (
         <>
-          <DataTable columns={columns} data={transactions} /*infiniteScroll -> descomentar pós ajuste na lib*//>
+          <DataTable columns={columns} data={transactions} infiniteScroll />
 
           {/* Sentinel + feedback de carregamento */}
           <div ref={sentinelRef} className="py-4 flex justify-center">
             {loadingMore && (
-              <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                <span className="text-sm text-muted-foreground">Carregando mais...</span>
+              </div>
             )}
             {!hasMore && transactions.length > 0 && (
               <p className="text-sm text-muted-foreground">Você chegou ao fim da listagem</p>
