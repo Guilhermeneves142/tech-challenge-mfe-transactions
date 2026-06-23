@@ -3,8 +3,9 @@
 //  Base URL configurável via variável de ambiente
 // ─────────────────────────────────────────────
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3099/api";
+// "/api" (relativo): no multizone o navegador está na origem do host,
+// que serve as Route Handlers. Override via NEXT_PUBLIC_API_URL se preciso.
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
 
 // ── Tipos ─────────────────────────────────────
 
