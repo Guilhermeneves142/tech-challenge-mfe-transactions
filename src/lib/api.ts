@@ -32,6 +32,8 @@ export interface Transaction {
   date: string;
   dateLabel: string;
   type: "credit" | "debit";
+  attachment: string;
+  attachmentName?: string;
 }
 
 export interface Category {
@@ -113,7 +115,10 @@ function toQueryString(params: TransactionParams): string {
   const qs = new URLSearchParams(
     Object.entries(params as Record<string, unknown>)
       .filter(([, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => [PARAM_KEY_MAP[k as keyof TransactionParams] ?? k, String(v)])
+      .map(([k, v]) => [
+        PARAM_KEY_MAP[k as keyof TransactionParams] ?? k,
+        String(v),
+      ]),
   ).toString();
   return qs ? `?${qs}` : "";
 }
@@ -122,7 +127,10 @@ function toReportQueryString(params: ReportParams): string {
   const qs = new URLSearchParams(
     Object.entries(params as Record<string, unknown>)
       .filter(([, v]) => v !== undefined && v !== null)
-      .map(([k, v]) => [REPORT_PARAM_KEY_MAP[k as keyof ReportParams] ?? k, String(v)])
+      .map(([k, v]) => [
+        REPORT_PARAM_KEY_MAP[k as keyof ReportParams] ?? k,
+        String(v),
+      ]),
   ).toString();
   return qs ? `?${qs}` : "";
 }
@@ -138,7 +146,9 @@ export const api = {
 
   /** Lista de transações com filtros opcionais */
   getTransactions: (params?: TransactionParams) =>
-    request<Transaction[]>(`/transactions${params ? toQueryString(params) : ""}`),
+    request<Transaction[]>(
+      `/transactions${params ? toQueryString(params) : ""}`,
+    ),
 
   /** Transação por ID */
   getTransactionById: (id: number) =>
@@ -146,7 +156,9 @@ export const api = {
 
   /** Receitas, despesas, saldo atual e lançamentos futuros */
   getTransactionsSummary: (params?: TransactionParams) =>
-    request<TransactionSummary>(`/transactions/summary${params ? toQueryString(params) : ""}`),
+    request<TransactionSummary>(
+      `/transactions/summary${params ? toQueryString(params) : ""}`,
+    ),
 
   /** Categorias disponíveis */
   getCategories: () => request<Category[]>("/categories"),
