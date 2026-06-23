@@ -53,7 +53,7 @@ function formatCurrency(value: number) {
 }
 
 function truncateText(text: string, limit: number) {
-  return text.length <= limit ? text : text.slice(0, limit) + "...";
+  return text.length <= limit ? text : text.slice(0, limit) +"...";
 }
 
 export function TransactionPageClient() {
