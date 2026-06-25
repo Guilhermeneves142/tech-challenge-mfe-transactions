@@ -1,16 +1,31 @@
 "use client";
 
-import type { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  CalendarIcon,
+  Download,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import type { DateRange } from "react-day-picker";
 import { useDebouncedCallback } from "use-debounce";
-
-import { DeleteTransactionModal, TransactionModal } from "@/components/transactions";
-import { api, type Category, type Transaction, type TransactionParams, type TransactionSummary } from "@/lib/api";
-import { getCategoryIcon } from "@/lib/categoryIcons";
+import {
+  api,
+  type Category,
+  type Transaction,
+  type TransactionSummary,
+  type TransactionParams,
+} from "@/lib/api";
+import {
+  DeleteTransactionModal,
+  TransactionModal,
+} from "@/components/transactions";
 import {
   Badge,
   Button,
@@ -29,6 +44,11 @@ import {
   SelectValue,
 } from "@vandrei/finance-ui";
 import type { TransactionFormState } from "../../components/transactions/types";
+import { getCategoryIcon } from "@/lib/categoryIcons";
+import { downloadAttachment } from "@/lib/file";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store";
+import { addCategories } from "@/features/categories/categories";
 
 function formatCurrency(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -51,8 +71,10 @@ export function TransactionPageClient() {
   const PAGE_SIZE = 10;
 
   const [summary, setSummary] = useState<TransactionSummary | undefined>();
-  const [categories, setCategories] = useState<Category[]>([]);
 
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
 
   const [filterDescription, setFilterDescription] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -60,9 +82,19 @@ export function TransactionPageClient() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | undefined>();
-  const [editingTransaction, setEditingTransaction] = useState<Partial<TransactionFormState> | undefined>();
+  const [deletingTransaction, setDeletingTransaction] = useState<
+    Transaction | undefined
+  >();
+  const [editingTransaction, setEditingTransaction] = useState<
+    Partial<TransactionFormState> | undefined
+  >();
   const [editingId, setEditingId] = useState<number | undefined>();
+
+  const dispatch = useDispatch();
+
+  const setCategories = (items: Category[]) => {
+    dispatch(addCategories(items));
+  };
 
   const fetchData = useCallback(async () => {
     loadingInitialRef.current = true;
@@ -74,9 +106,13 @@ export function TransactionPageClient() {
 
     const params: TransactionParams = { _page: 1, _limit: PAGE_SIZE };
     if (filterDescription) params.descriptionLike = filterDescription;
-    if (filterType && filterType !== "all") params.type = filterType as "credit" | "debit";
-    if (filterRange?.from) params.dateGte = format(filterRange.from, "yyyy-MM-dd") + "T00:00:00.000Z";
-    if (filterRange?.to) params.dateLte = format(filterRange.to, "yyyy-MM-dd") + "T23:59:59.999Z";
+    if (filterType && filterType !== "all")
+      params.type = filterType as "credit" | "debit";
+    if (filterRange?.from)
+      params.dateGte =
+        format(filterRange.from, "yyyy-MM-dd") + "T00:00:00.000Z";
+    if (filterRange?.to)
+      params.dateLte = format(filterRange.to, "yyyy-MM-dd") + "T23:59:59.999Z";
 
     const [txs, sum, cats] = await Promise.all([
       api.getTransactions(params).catch(() => []),
@@ -135,7 +171,9 @@ export function TransactionPageClient() {
     return () => observer.disconnect();
   }, [fetchMore, loadingInitial]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Escuta evento de refresh disparado por modais após criar/editar/deletar
   useEffect(() => {
@@ -172,6 +210,8 @@ export function TransactionPageClient() {
       amount: Math.abs(row.amount).toString(),
       date: row.date.split("T")[0],
       type: row.amount < 0 ? "debit" : "credit",
+      attachment: row.attachment,
+      attachmentName: row.attachmentName,
     });
     setModalOpen(true);
   }
@@ -187,6 +227,11 @@ export function TransactionPageClient() {
     setDeleteModalOpen(true);
   }
 
+  function handleDownloadAttachment(transaction: Transaction) {
+    if (!transaction.attachment) return;
+    downloadAttachment(transaction.attachment, transaction.attachmentName);
+  }
+
   function handleSuccess() {
     fetchData();
   }
@@ -196,7 +241,9 @@ export function TransactionPageClient() {
       id: "id",
       accessorKey: "description",
       meta: { width: "40%" },
-      header: () => <p className="text-label text-card-foreground">DESCRIÇÃO</p>,
+      header: () => (
+        <p className="text-label text-card-foreground">DESCRIÇÃO</p>
+      ),
       cell: ({ row }) => {
         const { dateLabel, description, amount } = row.original;
         const Icon = getCategoryIcon(categories, row.original.category);
@@ -209,7 +256,9 @@ export function TransactionPageClient() {
               </span>
               <div className="flex flex-col">
                 <h6>{description}</h6>
-                <p className="text-caption text-(--color-text-tertiary)">{dateLabel}</p>
+                <p className="text-caption text-(--color-text-tertiary)">
+                  {dateLabel}
+                </p>
               </div>
             </div>
             <div className="flex sm:hidden flex-row items-center gap-3">
@@ -218,8 +267,12 @@ export function TransactionPageClient() {
               </span>
               <div className="flex flex-col min-w-0 flex-1 gap-1">
                 <h6>{truncateText(description, 20)}</h6>
-                <p className="text-caption text-(--color-text-tertiary)">{dateLabel}</p>
-                <span className={`text-sm font-medium ${amount < 0 ? "text-feedback-error" : "text-primary"}`}>
+                <p className="text-caption text-(--color-text-tertiary)">
+                  {dateLabel}
+                </p>
+                <span
+                  className={`text-sm font-medium ${amount < 0 ? "text-feedback-error" : "text-primary"}`}
+                >
                   {amount < 0 ? `- ${formatted}` : `+ ${formatted}`}
                 </span>
               </div>
@@ -231,35 +284,77 @@ export function TransactionPageClient() {
     {
       accessorKey: "category",
       meta: { width: "25%" },
-      header: () => <p className="text-label text-card-foreground hidden sm:block">CATEGORIA</p>,
+      header: () => (
+        <p className="text-label text-card-foreground hidden sm:block">
+          CATEGORIA
+        </p>
+      ),
       cell: ({ row }) => {
         const id = row.getValue("category") as string;
         const label = categories.find((c) => c.id === id)?.label ?? id;
-        return <Badge className="hidden sm:inline-flex" variant="outline">{label}</Badge>;
+        return (
+          <Badge className="hidden sm:inline-flex" variant="outline">
+            {label}
+          </Badge>
+        );
       },
     },
     {
       accessorKey: "amount",
       meta: { width: "20%" },
-      header: () => <p className="text-label text-card-foreground hidden sm:block text-right">VALOR</p>,
+      header: () => (
+        <p className="text-label text-card-foreground hidden sm:block text-right">
+          VALOR
+        </p>
+      ),
       cell: ({ row }) => {
         const amount = row.original.amount;
         const formatted = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
-        return amount < 0
-          ? <h6 className="text-feedback-error text-right hidden sm:block">- {formatted}</h6>
-          : <h6 className="text-primary text-right hidden sm:block">+ {formatted}</h6>;
+        return amount < 0 ? (
+          <h6 className="text-feedback-error text-right hidden sm:block">
+            - {formatted}
+          </h6>
+        ) : (
+          <h6 className="text-primary text-right hidden sm:block">
+            + {formatted}
+          </h6>
+        );
       },
     },
     {
       id: "actions",
       meta: { width: 120 },
-      header: () => <p className="text-label text-card-foreground w-full text-right">AÇÕES</p>,
+      header: () => (
+        <p className="text-label text-card-foreground w-full text-right">
+          AÇÕES
+        </p>
+      ),
       cell: ({ row }) => (
-        <div className="flex gap-1 justify-end">
-          <Button variant="ghost" size="icon" aria-label={`Editar transação: ${row.original.description}`} onClick={() => handleEdit(row.original)}>
+        <div className="flex gap-1 justify-end items-center">
+          {row.original.attachment && (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Baixar anexo da transação`}
+              onClick={() => handleDownloadAttachment(row.original)}
+            >
+              <Download className="size-4" aria-hidden />
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Editar transação: ${row.original.description}`}
+            onClick={() => handleEdit(row.original)}
+          >
             <Pencil className="size-4" aria-hidden />
           </Button>
-          <Button variant="ghost" size="icon" aria-label={`Excluir transação: ${row.original.description}`} onClick={() => handleDelete(row.original)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Excluir transação: ${row.original.description}`}
+            onClick={() => handleDelete(row.original)}
+          >
             <Trash2 className="size-4" aria-hidden />
           </Button>
         </div>
@@ -274,22 +369,44 @@ export function TransactionPageClient() {
           <Label className="text-label">Período</Label>
           <div className="flex items-center gap-1">
             <Popover>
-              <PopoverTrigger render={<Button variant="outline" className="w-full sm:w-56 h-8 justify-start gap-2 font-normal !border-primary" />}>
+              <PopoverTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-56 h-8 justify-start gap-2 font-normal !border-primary"
+                  />
+                }
+              >
                 <CalendarIcon className="size-4 text-muted-foreground" />
                 {filterRange?.from ? (
-                  filterRange.to
-                    ? `${format(filterRange.from, "dd/MM/yyyy")} - ${format(filterRange.to, "dd/MM/yyyy")}`
-                    : format(filterRange.from, "dd/MM/yyyy")
+                  filterRange.to ? (
+                    `${format(filterRange.from, "dd/MM/yyyy")} - ${format(filterRange.to, "dd/MM/yyyy")}`
+                  ) : (
+                    format(filterRange.from, "dd/MM/yyyy")
+                  )
                 ) : (
-                  <span className="text-muted-foreground">dd/mm/aaaa - dd/mm/aaaa</span>
+                  <span className="text-muted-foreground">
+                    dd/mm/aaaa - dd/mm/aaaa
+                  </span>
                 )}
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar mode="range" locale={ptBR} selected={filterRange} onSelect={handleRangeChange} numberOfMonths={2} />
+                <Calendar
+                  mode="range"
+                  locale={ptBR}
+                  selected={filterRange}
+                  onSelect={handleRangeChange}
+                  numberOfMonths={2}
+                />
               </PopoverContent>
             </Popover>
             {filterRange && (
-              <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={handleClearRange}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 shrink-0"
+                onClick={handleClearRange}
+              >
                 <X className="size-4" />
               </Button>
             )}
@@ -311,17 +428,39 @@ export function TransactionPageClient() {
           <Select value={filterType} onValueChange={handleTypeChange}>
             <SelectTrigger className="w-full cursor-pointer">
               <SelectValue placeholder="Todos os tipos">
-                {(v) => v === "credit" ? "Receita" : v === "debit" ? "Despesa" : "Todos os tipos"}
+                {(v) =>
+                  v === "credit"
+                    ? "Receita"
+                    : v === "debit"
+                      ? "Despesa"
+                      : "Todos os tipos"
+                }
               </SelectValue>
             </SelectTrigger>
-            <SelectContent side="bottom" className="p-1" sideOffset={6} align="start" alignItemWithTrigger={false}>
-              <SelectItem className="cursor-pointer" value="all">Todos os tipos</SelectItem>
-              <SelectItem className="cursor-pointer" value="credit">Receita</SelectItem>
-              <SelectItem className="cursor-pointer" value="debit">Despesa</SelectItem>
+            <SelectContent
+              side="bottom"
+              className="p-1"
+              sideOffset={6}
+              align="start"
+              alignItemWithTrigger={false}
+            >
+              <SelectItem className="cursor-pointer" value="all">
+                Todos os tipos
+              </SelectItem>
+              <SelectItem className="cursor-pointer" value="credit">
+                Receita
+              </SelectItem>
+              <SelectItem className="cursor-pointer" value="debit">
+                Despesa
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <Button variant="default" className="cursor-pointer w-full sm:w-auto shrink-0" onClick={handleNewTransaction}>
+        <Button
+          variant="default"
+          className="cursor-pointer w-full sm:w-auto shrink-0"
+          onClick={handleNewTransaction}
+        >
           <Plus size={16} />
           Nova Transação
         </Button>
@@ -334,11 +473,15 @@ export function TransactionPageClient() {
         </Card>
         <Card className="p-6 bg-feedback-error text-card">
           <h4>Despesas</h4>
-          <h2 className="pe-4 -mt-3">{formatCurrency(summary?.expense ?? 0)}</h2>
+          <h2 className="pe-4 -mt-3">
+            {formatCurrency(summary?.expense ?? 0)}
+          </h2>
         </Card>
         <Card className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1">
           <h4>Seu Saldo Atual</h4>
-          <h2 className="pe-4 -mt-3">{formatCurrency(summary?.currentBalance ?? 0)}</h2>
+          <h2 className="pe-4 -mt-3">
+            {formatCurrency(summary?.currentBalance ?? 0)}
+          </h2>
         </Card>
       </section>
 
@@ -370,7 +513,6 @@ export function TransactionPageClient() {
         key={editingId ?? "create"}
         open={modalOpen}
         onOpenChange={setModalOpen}
-        categories={categories}
         mode={editingTransaction ? "edit" : "create"}
         initialData={editingTransaction}
         transactionId={editingId}

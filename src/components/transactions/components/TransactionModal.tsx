@@ -1,7 +1,5 @@
 "use client";
 
-
-
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
@@ -27,14 +25,21 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Field,
+  FieldLabel,
 } from "@vandrei/finance-ui";
-import type { TransactionFormType, TransactionModalProps } from "@/components/transactions/types";
+import type {
+  TransactionFormType,
+  TransactionModalProps,
+} from "@/components/transactions/types";
 import { useTransactionForm } from "@/components/transactions/hooks/useTransactionForm";
+import { useSelector } from "react-redux";
+import { downloadAttachment } from "@/lib/file";
+import { RootState } from "@/store";
 
 export function TransactionModal({
   open,
   onOpenChange,
-  categories,
   mode = "create",
   initialData,
   transactionId,
@@ -46,6 +51,7 @@ export function TransactionModal({
     error,
     setField,
     setType,
+    setAttachmentFile,
     handleSubmit,
     handleCancel,
     reset,
@@ -57,8 +63,18 @@ export function TransactionModal({
     onClose: () => onOpenChange(false),
   });
 
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
+
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) reset(); onOpenChange(isOpen); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) reset();
+        onOpenChange(isOpen);
+      }}
+    >
       <DialogContent className="sm:max-w-[480px] p-6 gap-0" showCloseButton>
         <DialogHeader className="mb-4">
           <DialogTitle>
@@ -71,7 +87,10 @@ export function TransactionModal({
           onSubmit={handleSubmit}
           className="flex flex-col gap-4 my-4"
         >
-          <Tabs value={form.type} onValueChange={(v) => setType(v as TransactionFormType)}>
+          <Tabs
+            value={form.type}
+            onValueChange={(v) => setType(v as TransactionFormType)}
+          >
             <TabsList className="w-full bg-brand-primary rounded-[10px] !h-[35px]">
               <TabsTrigger
                 value="credit"
@@ -111,6 +130,7 @@ export function TransactionModal({
               placeholder="Valor da transação"
               inputMode="decimal"
               className="rounded-lg"
+              type="number"
               value={form.amount}
               onChange={(e) => setField("amount", e.target.value)}
             />
@@ -172,6 +192,55 @@ export function TransactionModal({
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Field>
+              <FieldLabel htmlFor="anexo" className="text-label">
+                {form.attachment ? "Substituir anexo" : "Anexo"}
+              </FieldLabel>
+              {form.attachment && (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/20 bg-muted/30 px-3 py-2">
+                  <span className="text-caption truncate">
+                    {form.attachmentName || "Anexo existente"}
+                  </span>
+                  <div className="flex gap-1 shrink-0">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        downloadAttachment(
+                          form.attachment!,
+                          form.attachmentName,
+                        )
+                      }
+                      className="text-caption text-primary hover:underline"
+                    >
+                      Baixar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setAttachmentFile(null)}
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {!form.attachment && (
+                <Input
+                  id="anexo"
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={(e) =>
+                    setAttachmentFile(e.target.files?.[0] ?? null)
+                  }
+                />
+              )}
+            </Field>
           </div>
 
           {error && <p className="text-caption text-feedback-error">{error}</p>}
