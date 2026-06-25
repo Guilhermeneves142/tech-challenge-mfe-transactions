@@ -33,12 +33,13 @@ import type {
   TransactionModalProps,
 } from "@/components/transactions/types";
 import { useTransactionForm } from "@/components/transactions/hooks/useTransactionForm";
+import { useSelector } from "react-redux";
 import { downloadAttachment } from "@/lib/file";
+import { RootState } from "@/store";
 
 export function TransactionModal({
   open,
   onOpenChange,
-  categories,
   mode = "create",
   initialData,
   transactionId,
@@ -61,6 +62,10 @@ export function TransactionModal({
     onSuccess,
     onClose: () => onOpenChange(false),
   });
+
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
 
   return (
     <Dialog

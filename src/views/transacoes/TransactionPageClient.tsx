@@ -47,19 +47,25 @@ import {
 } from "@vandrei/finance-ui";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import { downloadAttachment } from "@/lib/file";
+import { useDispatch, useSelector } from "react-redux";
+import { RootState } from "@/store";
+import { addCategories } from "@/features/categories/categories";
 
 function formatCurrency(value: number) {
   return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function truncateText(text: string, limit: number) {
-  return text.length <= limit ? text : text.slice(0, limit) +"...";
+  return text.length <= limit ? text : text.slice(0, limit) + "...";
 }
 
 export function TransactionPageClient() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<TransactionSummary | undefined>();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const categories = useSelector(
+    (state: RootState) => state.categories.categories,
+  );
+
   const [loading, setLoading] = useState(true);
 
   const [filterDescription, setFilterDescription] = useState("");
@@ -75,6 +81,12 @@ export function TransactionPageClient() {
     Partial<TransactionFormState> | undefined
   >();
   const [editingId, setEditingId] = useState<number | undefined>();
+
+  const dispatch = useDispatch();
+
+  const setCategories = (items: Category[]) => {
+    dispatch(addCategories(items));
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -426,7 +438,6 @@ export function TransactionPageClient() {
         key={editingId ?? "create"}
         open={modalOpen}
         onOpenChange={setModalOpen}
-        categories={categories}
         mode={editingTransaction ? "edit" : "create"}
         initialData={editingTransaction}
         transactionId={editingId}
