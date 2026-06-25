@@ -28,7 +28,6 @@ export interface TransactionFormState {
 export interface TransactionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  categories: Category[];
   mode?: TransactionModalMode;
   initialData?: Partial<TransactionFormState>;
   transactionId?: number;
