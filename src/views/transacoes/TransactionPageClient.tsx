@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CalendarIcon,
   Download,
@@ -12,10 +12,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useDebouncedCallback } from "use-debounce";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { DateRange } from "react-day-picker";
-
+import { useDebouncedCallback } from "use-debounce";
 import {
   api,
   type Category,
@@ -23,7 +22,6 @@ import {
   type TransactionSummary,
   type TransactionParams,
 } from "@/lib/api";
-import type { TransactionFormState } from "../../components/transactions/types";
 import {
   DeleteTransactionModal,
   TransactionModal,
@@ -45,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@vandrei/finance-ui";
+import type { TransactionFormState } from "../../components/transactions/types";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 import { downloadAttachment } from "@/lib/file";
 import { useDispatch, useSelector } from "react-redux";
@@ -61,12 +60,21 @@ function truncateText(text: string, limit: number) {
 
 export function TransactionPageClient() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const pageRef = useRef(1);
+  const loadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
+  const [loadingInitial, setLoadingInitial] = useState(true);
+  const loadingInitialRef = useRef(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const PAGE_SIZE = 10;
+
   const [summary, setSummary] = useState<TransactionSummary | undefined>();
+
   const categories = useSelector(
     (state: RootState) => state.categories.categories,
   );
-
-  const [loading, setLoading] = useState(true);
 
   const [filterDescription, setFilterDescription] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -89,8 +97,14 @@ export function TransactionPageClient() {
   };
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
-    const params: TransactionParams = {};
+    loadingInitialRef.current = true;
+    setLoadingInitial(true);
+
+    pageRef.current = 1;
+    hasMoreRef.current = true;
+    setHasMore(true);
+
+    const params: TransactionParams = { _page: 1, _limit: PAGE_SIZE };
     if (filterDescription) params.descriptionLike = filterDescription;
     if (filterType && filterType !== "all")
       params.type = filterType as "credit" | "debit";
@@ -109,8 +123,53 @@ export function TransactionPageClient() {
     setTransactions(txs);
     setSummary(sum);
     setCategories(cats);
-    setLoading(false);
+    hasMoreRef.current = txs.length === PAGE_SIZE;
+    setHasMore(txs.length === PAGE_SIZE);
+    loadingInitialRef.current = false;
+    setLoadingInitial(false);
+
   }, [filterDescription, filterType, filterRange]);
+
+  const fetchMore = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMoreRef.current || loadingInitialRef.current) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    const nextPage = pageRef.current + 1;
+    const params: TransactionParams = { _page: nextPage, _limit: PAGE_SIZE };
+    if (filterDescription) params.descriptionLike = filterDescription;
+    if (filterType && filterType !== "all") params.type = filterType as "credit" | "debit";
+    if (filterRange?.from) params.dateGte = format(filterRange.from, "yyyy-MM-dd") + "T00:00:00.000Z";
+    if (filterRange?.to) params.dateLte = format(filterRange.to, "yyyy-MM-dd") + "T23:59:59.999Z";
+
+    const txs = await api.getTransactions(params).catch(() => []);
+
+    setTransactions((prev) => [...prev, ...txs]);
+    pageRef.current = nextPage;
+    hasMoreRef.current = txs.length === PAGE_SIZE;
+    setHasMore(txs.length === PAGE_SIZE);
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+  }, [filterDescription, filterType, filterRange]);
+
+  // Intersection Observer para detectar fim da lista
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) fetchMore();
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchMore, loadingInitial]);
 
   useEffect(() => {
     fetchData();
@@ -426,12 +485,28 @@ export function TransactionPageClient() {
         </Card>
       </section>
 
-      {loading ? (
+      {loadingInitial ? (
         <div className="flex justify-center py-12">
           <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         </div>
       ) : (
-        <DataTable columns={columns} data={transactions} pageSize={10} />
+        <>
+          <DataTable columns={columns} data={transactions} infiniteScroll />
+
+          {/* Sentinel + feedback de carregamento */}
+          <div ref={sentinelRef} className="py-4 flex justify-center">
+            {loadingMore && (
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                <span className="text-sm text-muted-foreground">Carregando mais...</span>
+              </div>
+            )}
+            {!hasMore && transactions.length > 0 && (
+              <p className="text-sm text-muted-foreground">Você chegou ao fim da listagem</p>
+            )}
+          </div>
+        </>
+
       )}
 
       <TransactionModal
