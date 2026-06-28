@@ -329,36 +329,52 @@ export function TransactionPageClient() {
           AÇÕES
         </p>
       ),
-      cell: ({ row }) => (
-        <div className="flex gap-1 justify-end items-center">
-          {row.original.attachment && (
+      cell: ({ row }) => {
+        const amount = row.original.amount;
+    
+        const category =
+          categories.find((c) => c.id === row.original.category)?.label ??
+          row.original.category;
+    
+        const formattedValue = formatCurrency(Math.abs(amount));
+    
+        const transactionSummary = `${row.original.description}, ${
+          amount < 0 ? "despesa" : "receita"
+        } de ${formattedValue}`;
+    
+        return (
+          <div className="flex gap-1 justify-end items-center">
+            {row.original.attachment && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Baixar anexo da transação: ${transactionSummary}`}
+                onClick={() => handleDownloadAttachment(row.original)}
+              >
+                <Download className="size-4" aria-hidden />
+              </Button>
+            )}
+    
             <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Baixar anexo da transação`}
-              onClick={() => handleDownloadAttachment(row.original)}
-            >
-              <Download className="size-4" aria-hidden />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Editar transação: ${row.original.description}`}
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="size-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Excluir transação: ${row.original.description}`}
-            onClick={() => handleDelete(row.original)}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </Button>
-        </div>
-      ),
+          variant="ghost"
+          size="icon"
+          aria-label={`Editar transação: ${transactionSummary}`}
+          onClick={() => handleEdit(row.original)}
+        >
+          <Pencil className="size-4" aria-hidden />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Excluir transação: ${transactionSummary}`}
+          onClick={() => handleDelete(row.original)}
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -466,24 +482,43 @@ export function TransactionPageClient() {
         </Button>
       </Card>
 
-      <section className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6">
-        <Card className="p-6 bg-brand-secondary text-primary">
-          <h4>Receitas</h4>
-          <h2 className="pe-4 -mt-3">{formatCurrency(summary?.income ?? 0)}</h2>
-        </Card>
-        <Card className="p-6 bg-feedback-error text-card">
-          <h4>Despesas</h4>
-          <h2 className="pe-4 -mt-3">
-            {formatCurrency(summary?.expense ?? 0)}
-          </h2>
-        </Card>
-        <Card className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1">
-          <h4>Seu Saldo Atual</h4>
-          <h2 className="pe-4 -mt-3">
-            {formatCurrency(summary?.currentBalance ?? 0)}
-          </h2>
-        </Card>
-      </section>
+      <section
+      aria-label="Resumo financeiro"
+      className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6"
+    >
+      <Card
+        tabIndex={0}
+        aria-label={`Receitas: ${formatCurrency(summary?.income ?? 0)}`}
+        className="p-6 bg-brand-secondary text-primary outline-none focus:ring-2 focus:ring-brand-primary"
+      >
+        <h4 aria-hidden="true">Receitas</h4>
+        <h2 aria-hidden="true" className="pe-4 -mt-3">
+          {formatCurrency(summary?.income ?? 0)}
+        </h2>
+      </Card>
+
+      <Card
+        tabIndex={0}
+        aria-label={`Despesas: ${formatCurrency(summary?.expense ?? 0)}`}
+        className="p-6 bg-feedback-error text-card outline-none focus:ring-2 focus:ring-brand-primary"
+      >
+        <h4 aria-hidden="true">Despesas</h4>
+        <h2 aria-hidden="true" className="pe-4 -mt-3">
+          {formatCurrency(summary?.expense ?? 0)}
+        </h2>
+      </Card>
+
+      <Card
+        tabIndex={0}
+        aria-label={`Seu saldo atual: ${formatCurrency(summary?.currentBalance ?? 0)}`}
+        className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1 outline-none focus:ring-2 focus:ring-brand-primary"
+      >
+        <h4 aria-hidden="true">Seu Saldo Atual</h4>
+        <h2 aria-hidden="true" className="pe-4 -mt-3">
+          {formatCurrency(summary?.currentBalance ?? 0)}
+        </h2>
+      </Card>
+    </section>
 
       {loadingInitial ? (
         <div className="flex justify-center py-12">
