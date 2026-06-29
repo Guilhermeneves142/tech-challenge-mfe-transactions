@@ -96,16 +96,16 @@ export function DeleteTransactionModal({
                   <ShoppingBag size={20} />
                 </span>
 
-                <h6 aria-hidden="true">{transaction.description}</h6>
+                <h3 aria-hidden="true">{transaction.description}</h3>
               </div>
 
-              <h6
+              <h3
                 aria-hidden="true"
                 className={amount < 0 ? "text-feedback-error" : "text-primary"}
               >
                 {amount < 0 ? "- " : "+ "}
                 {formatted}
-              </h6>
+              </h3>
             </div>
           )}
 

@@ -255,7 +255,7 @@ export function TransactionPageClient() {
                 <Icon className="size-5" />
               </span>
               <div className="flex flex-col">
-                <h6>{description}</h6>
+                <p className="font-bold">{description}</p>
                 <p className="text-caption text-(--color-text-tertiary)">
                   {dateLabel}
                 </p>
@@ -266,7 +266,7 @@ export function TransactionPageClient() {
                 <Icon className="size-5" />
               </span>
               <div className="flex flex-col min-w-0 flex-1 gap-1">
-                <h6>{truncateText(description, 20)}</h6>
+                <p>{truncateText(description, 20)}</p>
                 <p className="text-caption text-(--color-text-tertiary)">
                   {dateLabel}
                 </p>
@@ -440,38 +440,46 @@ export function TransactionPageClient() {
           />
         </div>
         <div className="flex flex-col gap-1 w-full sm:w-48">
-          <Label className="text-label">Tipo</Label>
-          <Select value={filterType} onValueChange={handleTypeChange}>
-            <SelectTrigger className="w-full cursor-pointer">
-              <SelectValue placeholder="Todos os tipos">
-                {(v) =>
-                  v === "credit"
-                    ? "Receita"
-                    : v === "debit"
-                      ? "Despesa"
-                      : "Todos os tipos"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              side="bottom"
-              className="p-1"
-              sideOffset={6}
-              align="start"
-              alignItemWithTrigger={false}
-            >
-              <SelectItem className="cursor-pointer" value="all">
-                Todos os tipos
-              </SelectItem>
-              <SelectItem className="cursor-pointer" value="credit">
-                Receita
-              </SelectItem>
-              <SelectItem className="cursor-pointer" value="debit">
-                Despesa
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Label id="transaction-type-label" className="text-label">
+          Tipo
+        </Label>
+
+        <Select value={filterType} onValueChange={handleTypeChange}>
+          <SelectTrigger
+            aria-labelledby="transaction-type-label"
+            aria-label="Filtrar por tipo de transação"
+            className="w-full cursor-pointer"
+          >
+      <SelectValue placeholder="Todos os tipos">
+        {(v) =>
+          v === "credit"
+            ? "Receita"
+            : v === "debit"
+              ? "Despesa"
+              : "Todos os tipos"
+        }
+      </SelectValue>
+    </SelectTrigger>
+
+    <SelectContent
+      side="bottom"
+      className="p-1"
+      sideOffset={6}
+      align="start"
+      alignItemWithTrigger={false}
+    >
+      <SelectItem className="cursor-pointer" value="all">
+        Todos os tipos
+      </SelectItem>
+      <SelectItem className="cursor-pointer" value="credit">
+        Receita
+      </SelectItem>
+      <SelectItem className="cursor-pointer" value="debit">
+        Despesa
+      </SelectItem>
+    </SelectContent>
+  </Select>
+</div>
         <Button
           variant="default"
           className="cursor-pointer w-full sm:w-auto shrink-0"
@@ -482,43 +490,43 @@ export function TransactionPageClient() {
         </Button>
       </Card>
 
-      <section
-      aria-label="Resumo financeiro"
-      className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6"
-    >
-      <Card
-        tabIndex={0}
-        aria-label={`Receitas: ${formatCurrency(summary?.income ?? 0)}`}
-        className="p-6 bg-brand-secondary text-primary outline-none focus:ring-2 focus:ring-brand-primary"
-      >
-        <h4 aria-hidden="true">Receitas</h4>
-        <h2 aria-hidden="true" className="pe-4 -mt-3">
-          {formatCurrency(summary?.income ?? 0)}
-        </h2>
-      </Card>
+<section
+  aria-label="Resumo financeiro"
+  className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6"
+>
+  <Card className="p-6 bg-brand-secondary text-primary">
+    <span className="sr-only">
+      Receitas: {formatCurrency(summary?.income ?? 0)}
+    </span>
 
-      <Card
-        tabIndex={0}
-        aria-label={`Despesas: ${formatCurrency(summary?.expense ?? 0)}`}
-        className="p-6 bg-feedback-error text-card outline-none focus:ring-2 focus:ring-brand-primary"
-      >
-        <h4 aria-hidden="true">Despesas</h4>
-        <h2 aria-hidden="true" className="pe-4 -mt-3">
-          {formatCurrency(summary?.expense ?? 0)}
-        </h2>
-      </Card>
+    <h4 aria-hidden="true">Receitas</h4>
+    <h2 aria-hidden="true" className="pe-4 -mt-3">
+      {formatCurrency(summary?.income ?? 0)}
+    </h2>
+  </Card>
 
-      <Card
-        tabIndex={0}
-        aria-label={`Seu saldo atual: ${formatCurrency(summary?.currentBalance ?? 0)}`}
-        className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1 outline-none focus:ring-2 focus:ring-brand-primary"
-      >
-        <h4 aria-hidden="true">Seu Saldo Atual</h4>
-        <h2 aria-hidden="true" className="pe-4 -mt-3">
-          {formatCurrency(summary?.currentBalance ?? 0)}
-        </h2>
-      </Card>
-    </section>
+  <Card className="p-6 bg-feedback-error text-card">
+    <span className="sr-only">
+      Despesas: {formatCurrency(summary?.expense ?? 0)}
+    </span>
+
+    <h4 aria-hidden="true">Despesas</h4>
+    <h2 aria-hidden="true" className="pe-4 -mt-3">
+      {formatCurrency(summary?.expense ?? 0)}
+    </h2>
+  </Card>
+
+  <Card className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1">
+    <span className="sr-only">
+      Seu saldo atual: {formatCurrency(summary?.currentBalance ?? 0)}
+    </span>
+
+    <h4 aria-hidden="true">Seu Saldo Atual</h4>
+    <h2 aria-hidden="true" className="pe-4 -mt-3">
+      {formatCurrency(summary?.currentBalance ?? 0)}
+    </h2>
+  </Card>
+</section>
 
       {loadingInitial ? (
         <div className="flex justify-center py-12">
