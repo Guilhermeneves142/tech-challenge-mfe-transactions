@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogOut, Lock, Menu, Disc, List, X, LayoutDashboard, User, Wallet } from "lucide-react";
+import {
+  LogOut,
+  Lock,
+  Menu,
+  Disc,
+  List,
+  X,
+  LayoutDashboard,
+  User,
+  Wallet,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -29,23 +39,23 @@ const menuItems = [
   {
     label: "Dashboard",
     href: "/dashboard",
-    icon: <LayoutDashboard className="h-5 w-5 shrink-0" />,
+    icon: <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />,
   },
   {
     label: "Transações",
     href: "/transacoes",
-    icon: <List className="h-5 w-5 shrink-0" />,
+    icon: <List className="h-5 w-5 shrink-0" aria-hidden />,
   },
   {
     label: "Planejamento",
     href: "/planejamento",
-    icon: <Disc className="h-5 w-5 shrink-0" />,
+    icon: <Disc className="h-5 w-5 shrink-0" aria-hidden />,
     disabled: true,
   },
   {
     label: "Perfil",
     href: "/perfil",
-    icon: <User className="h-5 w-5 shrink-0" />,
+    icon: <User className="h-5 w-5 shrink-0" aria-hidden />,
     disabled: true,
   },
 ];
@@ -61,6 +71,105 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+const navItemClass =
+  "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
+
+function Logo() {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
+        <Wallet className="h-5 w-5 text-[var(--color-brand-primary)]" aria-hidden />
+      </span>
+      <span className="text-[20px] font-semibold leading-[24px]">FinanceApp</span>
+    </div>
+  );
+}
+
+function NavMenu({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <nav aria-label="Navegação principal">
+      <ul className="flex flex-col gap-2">
+        {menuItems.map((item) => {
+          // Esta zona é sempre a de transações: o item ativo é fixo.
+          const isActive = item.href === "/transacoes";
+          return (
+            <li key={item.label}>
+              {item.disabled ? (
+                <span
+                  title="Disponível em breve"
+                  aria-disabled="true"
+                  className={`${navItemClass} cursor-not-allowed text-white/40 opacity-60`}
+                >
+                  {item.icon}
+                  <span className="text-[16px] font-medium leading-[20px]">
+                    {item.label}
+                  </span>
+                  <Lock className="ml-auto h-4 w-4 opacity-70" aria-hidden />
+                </span>
+              ) : (
+                <a
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`${navItemClass} ${
+                    isActive
+                      ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
+                      : "text-white hover:bg-[var(--color-brand-secondary)]/20"
+                  }`}
+                >
+                  {item.icon}
+                  <span className="text-[16px] font-medium leading-[20px]">
+                    {item.label}
+                  </span>
+                </a>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+function UserBox({
+  initials,
+  name,
+  plan,
+  onLogout,
+  className,
+}: {
+  initials: string;
+  name: string;
+  plan: string;
+  onLogout: () => void;
+  className?: string;
+}) {
+  return (
+    <div className={`flex items-center justify-between gap-3 ${className ?? ""}`}>
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-primary)]">
+          {initials}
+        </span>
+        <span className="flex flex-col">
+          <span className="text-[14px] font-semibold leading-[18px]">{name}</span>
+          <span className="text-[11px] font-medium leading-[14px] text-white/75">
+            {plan}
+          </span>
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onLogout}
+        aria-label="Sair"
+        className="rounded-lg p-2 transition hover:bg-white/10"
+      >
+        <LogOut className="h-5 w-5 text-white" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
 export default function Sidebar() {
   const [openLogoutModal, setOpenLogoutModal] = useState(false);
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
@@ -68,11 +177,13 @@ export default function Sidebar() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("finance-app-user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsMounted(true);
+    // Lido apenas no cliente para não divergir da hidratação do servidor.
+    const loadUser = async () => {
+      const storedUser = localStorage.getItem("finance-app-user");
+      if (storedUser) setUser(JSON.parse(storedUser));
+      setIsMounted(true);
+    };
+    loadUser();
   }, []);
 
   function handleLogout() {
@@ -83,214 +194,79 @@ export default function Sidebar() {
     window.location.href = "/auth/login";
   }
 
-  const userName = user?.name || "Usuário";
-  const userInitials =
-    user?.initials || (user?.name ? getInitials(user.name) : "U");
-  const userPlan = user?.plan || "Plano Grátis";
+  const userName = isMounted ? user?.name || "Usuário" : "Usuário";
+  const userInitials = isMounted
+    ? user?.initials || (user?.name ? getInitials(user.name) : "U")
+    : "U";
+  const userPlan = isMounted ? user?.plan || "Plano Grátis" : "Plano Grátis";
 
   return (
     <>
+      {/* Topbar mobile */}
       <header className="fixed left-0 top-0 z-50 w-full bg-[var(--color-brand-tertiary)] px-4 py-4 text-white shadow-md lg:hidden">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
-              <Wallet className="h-5 w-5 text-[var(--color-brand-primary)]" />
-            </div>
-
-            <span className="text-[20px] font-semibold leading-[24px]">
-              FinanceApp
-            </span>
-          </div>
+          <Logo />
 
           <button
             type="button"
             onClick={() => setOpenMobileMenu((prev) => !prev)}
+            aria-label={openMobileMenu ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={openMobileMenu}
+            aria-controls="mobile-menu"
             className="rounded-lg p-2 transition hover:bg-white/10"
           >
             {openMobileMenu ? (
-              <X className="h-6 w-6 text-white" />
+              <X className="h-6 w-6 text-white" aria-hidden />
             ) : (
-              <Menu className="h-6 w-6 text-white" />
+              <Menu className="h-6 w-6 text-white" aria-hidden />
             )}
           </button>
         </div>
       </header>
 
+      {/* Drawer mobile */}
       {openMobileMenu && (
         <>
-          <div className="fixed left-0 top-[72px] z-50 w-full bg-[var(--color-brand-tertiary)] px-4 pb-5 text-white shadow-lg lg:hidden">
-            <nav className="flex flex-col gap-2">
-              {menuItems.map((item) => {
-                const isActive = item.href === "/transacoes";
-                const isDisabled = item.disabled;
+          <div
+            id="mobile-menu"
+            className="fixed left-0 top-[72px] z-50 w-full bg-[var(--color-brand-tertiary)] px-4 pb-5 text-white shadow-lg lg:hidden"
+          >
+            <NavMenu onNavigate={() => setOpenMobileMenu(false)} />
 
-                const baseClass =
-                  "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
-
-                const activeClass = isActive
-                  ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
-                  : "text-white hover:bg-[var(--color-brand-secondary)]/20";
-
-                const disabledClass =
-                  "text-white/40 cursor-not-allowed opacity-60";
-
-                if (isDisabled) {
-                  return (
-                    <div
-                      key={item.label}
-                      title="Disponível em breve"
-                      className={`${baseClass} ${disabledClass}`}
-                    >
-                      {item.icon}
-
-                      <span className="text-[16px] font-medium leading-[20px]">
-                        {item.label}
-                      </span>
-
-                      <Lock className="ml-auto h-4 w-4 opacity-70" />
-                    </div>
-                  );
-                }
-
-                return (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpenMobileMenu(false)}
-                    className={`${baseClass} ${activeClass}`}
-                  >
-                    {item.icon}
-
-                    <span className="text-[16px] font-medium leading-[20px]">
-                      {item.label}
-                    </span>
-                  </a>
-                );
-              })}
-            </nav>
-
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-primary)]">
-                  {isMounted ? userInitials : "U"}
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[14px] font-semibold leading-[18px]">
-                    {isMounted ? userName : "Usuário"}
-                  </span>
-
-                  <span className="text-[11px] font-medium leading-[14px] text-white/75">
-                    {isMounted ? userPlan : "Plano Grátis"}
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setOpenLogoutModal(true)}
-                className="rounded-lg p-2 transition hover:bg-white/10"
-              >
-                <LogOut className="h-5 w-5 text-white" />
-              </button>
-            </div>
+            <UserBox
+              initials={userInitials}
+              name={userName}
+              plan={userPlan}
+              onLogout={() => setOpenLogoutModal(true)}
+              className="mt-4 border-t border-white/15 pt-4"
+            />
           </div>
 
-          <div
+          <button
+            type="button"
+            aria-label="Fechar menu"
             onClick={() => setOpenMobileMenu(false)}
             className="fixed inset-0 z-40 bg-black/30 lg:hidden"
           />
         </>
       )}
 
-      <div className="max-lg:hidden flex h-full min-h-screen flex-col justify-between bg-[var(--color-brand-tertiary)] px-4 py-5 text-white">
+      {/* Sidebar desktop */}
+      <div className="flex h-full min-h-screen flex-col justify-between bg-[var(--color-brand-tertiary)] px-4 py-5 text-white max-lg:hidden">
         <div>
-          {/* LOGO */}
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
-              <Wallet className="h-5 w-5 text-[var(--color-brand-primary)]" />
-            </div>
-
-            <span className="text-[20px] font-semibold leading-[24px]">
-              FinanceApp
-            </span>
+          <div className="mb-8">
+            <Logo />
           </div>
 
-          <nav className="flex flex-col gap-2">
-            {menuItems.map((item) => {
-              const isActive = item.href === "/transacoes";
-              const isDisabled = item.disabled;
-
-              const baseClass =
-                "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
-
-              const activeClass = isActive
-                ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
-                : "text-white hover:bg-[var(--color-brand-secondary)]/20";
-
-              const disabledClass =
-                "text-white/40 cursor-not-allowed opacity-60";
-
-              if (isDisabled) {
-                return (
-                  <div
-                    key={item.label}
-                    title="Disponível em breve"
-                    className={`${baseClass} ${disabledClass}`}
-                  >
-                    {item.icon}
-
-                    <span className="text-[16px] font-medium leading-[20px]">
-                      {item.label}
-                    </span>
-
-                    <Lock className="ml-auto h-4 w-4 opacity-70" />
-                  </div>
-                );
-              }
-
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`${baseClass} ${activeClass}`}
-                >
-                  {item.icon}
-
-                  <span className="text-[16px] font-medium leading-[20px]">
-                    {item.label}
-                  </span>
-                </a>
-              );
-            })}
-          </nav>
+          <NavMenu />
         </div>
 
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-primary)]">
-              {isMounted ? userInitials : "U"}
-            </div>
-
-            <div className="flex flex-col">
-              <span className="text-[14px] font-semibold leading-[18px]">
-                {isMounted ? userName : "Usuário"}
-              </span>
-
-              <span className="text-[11px] font-medium leading-[14px] text-white/75">
-                {isMounted ? userPlan : "Plano Grátis"}
-              </span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setOpenLogoutModal(true)}
-            className="rounded-lg p-2 transition hover:bg-white/10"
-          >
-            <LogOut className="h-5 w-5 text-white" />
-          </button>
-        </div>
+        <UserBox
+          initials={userInitials}
+          name={userName}
+          plan={userPlan}
+          onLogout={() => setOpenLogoutModal(true)}
+        />
       </div>
 
       <Dialog open={openLogoutModal} onOpenChange={setOpenLogoutModal}>
@@ -302,12 +278,8 @@ export default function Sidebar() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <DialogClose render={<Button variant="outline" />}>
-              Cancelar
-            </DialogClose>
-            <Button onClick={handleLogout}>
-              Sair
-            </Button>
+            <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
+            <Button onClick={handleLogout}>Sair</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
