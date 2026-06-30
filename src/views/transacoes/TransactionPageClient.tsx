@@ -255,7 +255,7 @@ export function TransactionPageClient() {
                 <Icon className="size-5" />
               </span>
               <div className="flex flex-col">
-                <h6>{description}</h6>
+                <p className="font-bold">{description}</p>
                 <p className="text-caption text-(--color-text-tertiary)">
                   {dateLabel}
                 </p>
@@ -266,7 +266,7 @@ export function TransactionPageClient() {
                 <Icon className="size-5" />
               </span>
               <div className="flex flex-col min-w-0 flex-1 gap-1">
-                <h6>{truncateText(description, 20)}</h6>
+                <p>{truncateText(description, 20)}</p>
                 <p className="text-caption text-(--color-text-tertiary)">
                   {dateLabel}
                 </p>
@@ -329,36 +329,52 @@ export function TransactionPageClient() {
           AÇÕES
         </p>
       ),
-      cell: ({ row }) => (
-        <div className="flex gap-1 justify-end items-center">
-          {row.original.attachment && (
+      cell: ({ row }) => {
+        const amount = row.original.amount;
+    
+        const category =
+          categories.find((c) => c.id === row.original.category)?.label ??
+          row.original.category;
+    
+        const formattedValue = formatCurrency(Math.abs(amount));
+    
+        const transactionSummary = `${row.original.description}, ${
+          amount < 0 ? "despesa" : "receita"
+        } de ${formattedValue}`;
+    
+        return (
+          <div className="flex gap-1 justify-end items-center">
+            {row.original.attachment && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Baixar anexo da transação: ${transactionSummary}`}
+                onClick={() => handleDownloadAttachment(row.original)}
+              >
+                <Download className="size-4" aria-hidden />
+              </Button>
+            )}
+    
             <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Baixar anexo da transação`}
-              onClick={() => handleDownloadAttachment(row.original)}
-            >
-              <Download className="size-4" aria-hidden />
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Editar transação: ${row.original.description}`}
-            onClick={() => handleEdit(row.original)}
-          >
-            <Pencil className="size-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Excluir transação: ${row.original.description}`}
-            onClick={() => handleDelete(row.original)}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </Button>
-        </div>
-      ),
+          variant="ghost"
+          size="icon"
+          aria-label={`Editar transação: ${transactionSummary}`}
+          onClick={() => handleEdit(row.original)}
+        >
+          <Pencil className="size-4" aria-hidden />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Excluir transação: ${transactionSummary}`}
+          onClick={() => handleDelete(row.original)}
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -424,38 +440,46 @@ export function TransactionPageClient() {
           />
         </div>
         <div className="flex flex-col gap-1 w-full sm:w-48">
-          <Label className="text-label">Tipo</Label>
-          <Select value={filterType} onValueChange={handleTypeChange}>
-            <SelectTrigger className="w-full cursor-pointer">
-              <SelectValue placeholder="Todos os tipos">
-                {(v) =>
-                  v === "credit"
-                    ? "Receita"
-                    : v === "debit"
-                      ? "Despesa"
-                      : "Todos os tipos"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent
-              side="bottom"
-              className="p-1"
-              sideOffset={6}
-              align="start"
-              alignItemWithTrigger={false}
-            >
-              <SelectItem className="cursor-pointer" value="all">
-                Todos os tipos
-              </SelectItem>
-              <SelectItem className="cursor-pointer" value="credit">
-                Receita
-              </SelectItem>
-              <SelectItem className="cursor-pointer" value="debit">
-                Despesa
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Label id="transaction-type-label" className="text-label">
+          Tipo
+        </Label>
+
+        <Select value={filterType} onValueChange={handleTypeChange}>
+          <SelectTrigger
+            aria-labelledby="transaction-type-label"
+            aria-label="Filtrar por tipo de transação"
+            className="w-full cursor-pointer"
+          >
+      <SelectValue placeholder="Todos os tipos">
+        {(v) =>
+          v === "credit"
+            ? "Receita"
+            : v === "debit"
+              ? "Despesa"
+              : "Todos os tipos"
+        }
+      </SelectValue>
+    </SelectTrigger>
+
+    <SelectContent
+      side="bottom"
+      className="p-1"
+      sideOffset={6}
+      align="start"
+      alignItemWithTrigger={false}
+    >
+      <SelectItem className="cursor-pointer" value="all">
+        Todos os tipos
+      </SelectItem>
+      <SelectItem className="cursor-pointer" value="credit">
+        Receita
+      </SelectItem>
+      <SelectItem className="cursor-pointer" value="debit">
+        Despesa
+      </SelectItem>
+    </SelectContent>
+  </Select>
+</div>
         <Button
           variant="default"
           className="cursor-pointer w-full sm:w-auto shrink-0"
@@ -466,24 +490,43 @@ export function TransactionPageClient() {
         </Button>
       </Card>
 
-      <section className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6">
-        <Card className="p-6 bg-brand-secondary text-primary">
-          <h4>Receitas</h4>
-          <h2 className="pe-4 -mt-3">{formatCurrency(summary?.income ?? 0)}</h2>
-        </Card>
-        <Card className="p-6 bg-feedback-error text-card">
-          <h4>Despesas</h4>
-          <h2 className="pe-4 -mt-3">
-            {formatCurrency(summary?.expense ?? 0)}
-          </h2>
-        </Card>
-        <Card className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1">
-          <h4>Seu Saldo Atual</h4>
-          <h2 className="pe-4 -mt-3">
-            {formatCurrency(summary?.currentBalance ?? 0)}
-          </h2>
-        </Card>
-      </section>
+<section
+  aria-label="Resumo financeiro"
+  className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6"
+>
+  <Card className="p-6 bg-brand-secondary text-primary">
+    <span className="sr-only">
+      Receitas: {formatCurrency(summary?.income ?? 0)}
+    </span>
+
+    <h4 aria-hidden="true">Receitas</h4>
+    <h2 aria-hidden="true" className="pe-4 -mt-3">
+      {formatCurrency(summary?.income ?? 0)}
+    </h2>
+  </Card>
+
+  <Card className="p-6 bg-feedback-error text-card">
+    <span className="sr-only">
+      Despesas: {formatCurrency(summary?.expense ?? 0)}
+    </span>
+
+    <h4 aria-hidden="true">Despesas</h4>
+    <h2 aria-hidden="true" className="pe-4 -mt-3">
+      {formatCurrency(summary?.expense ?? 0)}
+    </h2>
+  </Card>
+
+  <Card className="p-6 bg-brand-tertiary text-card sm:col-span-2 xl:col-span-1">
+    <span className="sr-only">
+      Seu saldo atual: {formatCurrency(summary?.currentBalance ?? 0)}
+    </span>
+
+    <h4 aria-hidden="true">Seu Saldo Atual</h4>
+    <h2 aria-hidden="true" className="pe-4 -mt-3">
+      {formatCurrency(summary?.currentBalance ?? 0)}
+    </h2>
+  </Card>
+</section>
 
       {loadingInitial ? (
         <div className="flex justify-center py-12">

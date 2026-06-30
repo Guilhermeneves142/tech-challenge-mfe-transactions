@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LogOut, Lock, Menu, Disc, List, X, LayoutDashboard, User, Wallet } from "lucide-react";
+import {
+  LogOut,
+  Lock,
+  Menu,
+  Disc,
+  List,
+  X,
+  LayoutDashboard,
+  User,
+  Wallet,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -23,29 +33,27 @@ type User = {
   avatar?: string | null;
 };
 
-// Links apontam para outras zonas (host/auth). No multizone a navegação entre
-// zonas é hard navigation (<a>), senão o basePath /transacoes prefixaria as URLs.
 const menuItems = [
   {
     label: "Dashboard",
     href: "/dashboard",
-    icon: <LayoutDashboard className="h-5 w-5 shrink-0" />,
+    icon: LayoutDashboard,
   },
   {
     label: "Transações",
     href: "/transacoes",
-    icon: <List className="h-5 w-5 shrink-0" />,
+    icon: List,
   },
   {
     label: "Planejamento",
     href: "/planejamento",
-    icon: <Disc className="h-5 w-5 shrink-0" />,
+    icon: Disc,
     disabled: true,
   },
   {
     label: "Perfil",
     href: "/perfil",
-    icon: <User className="h-5 w-5 shrink-0" />,
+    icon: User,
     disabled: true,
   },
 ];
@@ -69,9 +77,11 @@ export default function Sidebar() {
 
   useEffect(() => {
     const storedUser = localStorage.getItem("finance-app-user");
+
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+
     setIsMounted(true);
   }, []);
 
@@ -79,7 +89,6 @@ export default function Sidebar() {
     clearAuth();
     setOpenLogoutModal(false);
     setOpenMobileMenu(false);
-    // Navegação entre zonas (transacoes -> auth) é hard navigation.
     window.location.href = "/auth/login";
   }
 
@@ -88,13 +97,75 @@ export default function Sidebar() {
     user?.initials || (user?.name ? getInitials(user.name) : "U");
   const userPlan = user?.plan || "Plano Grátis";
 
+  function renderMenuItem(item: (typeof menuItems)[number], mobile = false) {
+    const isActive = item.href === "/transacoes";
+    const isDisabled = item.disabled;
+    const Icon = item.icon;
+
+    const baseClass =
+      "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
+
+    const activeClass = isActive
+      ? "bg-[var(--color-brand-secondary)]"
+      : "text-white hover:bg-[var(--color-brand-secondary)]/20";
+
+    const disabledClass = "text-white/40 cursor-not-allowed opacity-60";
+
+    if (isDisabled) {
+      return (
+        <div
+          key={item.label}
+          title="Disponível em breve"
+          className={`${baseClass} ${disabledClass}`}
+        >
+          <Icon className="h-5 w-5 shrink-0" />
+
+          <span className="text-[16px] font-medium leading-[20px]">
+            {item.label}
+          </span>
+
+          <Lock className="ml-auto h-4 w-4 opacity-70" />
+        </div>
+      );
+    }
+
+    return (
+      <a
+        key={item.label}
+        href={item.href}
+        onClick={mobile ? () => setOpenMobileMenu(false) : undefined}
+        className={`${baseClass} ${activeClass}`}
+        aria-current={isActive ? "page" : undefined}
+      >
+        <Icon
+          aria-hidden="true"
+          className={`h-5 w-5 shrink-0 ${
+            isActive
+              ? "text-[var(--color-brand-tertiary)]"
+              : "text-white"
+          }`}
+        />
+
+        <span
+          className={`text-[16px] leading-[20px] ${
+            isActive
+              ? "font-bold text-[var(--color-brand-tertiary)]"
+              : "font-medium text-white"
+          }`}
+        >
+          {item.label}
+        </span>
+      </a>
+    );
+  }
+
   return (
     <>
       <header className="fixed left-0 top-0 z-50 w-full bg-[var(--color-brand-tertiary)] px-4 py-4 text-white shadow-md lg:hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
-              <Wallet className="h-5 w-5 text-[var(--color-brand-primary)]" />
+              <Wallet className="h-5 w-5 text-[var(--color-brand-tertiary)]" />
             </div>
 
             <span className="text-[20px] font-semibold leading-[24px]">
@@ -104,13 +175,14 @@ export default function Sidebar() {
 
           <button
             type="button"
+            aria-label={openMobileMenu ? "Fechar menu" : "Abrir menu"}
             onClick={() => setOpenMobileMenu((prev) => !prev)}
             className="rounded-lg p-2 transition hover:bg-white/10"
           >
             {openMobileMenu ? (
-              <X className="h-6 w-6 text-white" />
+              <X aria-hidden="true" className="h-6 w-6 text-white" />
             ) : (
-              <Menu className="h-6 w-6 text-white" />
+              <Menu aria-hidden="true" className="h-6 w-6 text-white" />
             )}
           </button>
         </div>
@@ -119,59 +191,67 @@ export default function Sidebar() {
       {openMobileMenu && (
         <>
           <div className="fixed left-0 top-[72px] z-50 w-full bg-[var(--color-brand-tertiary)] px-4 pb-5 text-white shadow-lg lg:hidden">
-            <nav className="flex flex-col gap-2">
-              {menuItems.map((item) => {
-                const isActive = item.href === "/transacoes";
-                const isDisabled = item.disabled;
+          <nav
+  className="flex flex-col gap-2"
+  aria-label="Menu principal"
+>
+  {menuItems.map((item) => {
+    const isActive = item.href === "/transacoes";
+    const isDisabled = item.disabled;
 
-                const baseClass =
-                  "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
+    const baseClass =
+      "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
 
-                const activeClass = isActive
-                  ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
-                  : "text-white hover:bg-[var(--color-brand-secondary)]/20";
+    const activeClass = isActive
+      ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
+      : "text-white hover:bg-[var(--color-brand-secondary)]/20";
 
-                const disabledClass =
-                  "text-white/40 cursor-not-allowed opacity-60";
+    const disabledClass =
+      "text-white/40 cursor-not-allowed opacity-60";
 
-                if (isDisabled) {
-                  return (
-                    <div
-                      key={item.label}
-                      title="Disponível em breve"
-                      className={`${baseClass} ${disabledClass}`}
-                    >
-                      {item.icon}
+    if (isDisabled) {
+      return (
+        <div
+          key={item.label}
+          title="Disponível em breve"
+          aria-disabled="true"
+          className={`${baseClass} ${disabledClass}`}
+        >
+          <item.icon />
 
-                      <span className="text-[16px] font-medium leading-[20px]">
-                        {item.label}
-                      </span>
+          <span className="text-[16px] font-medium leading-[20px]">
+            {item.label}
+          </span>
 
-                      <Lock className="ml-auto h-4 w-4 opacity-70" />
-                    </div>
-                  );
-                }
+          <Lock
+            className="ml-auto h-4 w-4 opacity-70"
+            aria-hidden="true"
+          />
+        </div>
+      );
+    }
 
-                return (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpenMobileMenu(false)}
-                    className={`${baseClass} ${activeClass}`}
-                  >
-                    {item.icon}
+    return (
+      <a
+        key={item.label}
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
+        onClick={() => setOpenMobileMenu(false)}
+        className={`${baseClass} ${activeClass}`}
+      >
+        <item.icon />
 
-                    <span className="text-[16px] font-medium leading-[20px]">
-                      {item.label}
-                    </span>
-                  </a>
-                );
-              })}
-            </nav>
+        <span className="text-[16px] font-medium leading-[20px]">
+          {item.label}
+        </span>
+      </a>
+    );
+  })}
+</nav>
 
             <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/15 pt-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-primary)]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-tertiary)]">
                   {isMounted ? userInitials : "U"}
                 </div>
 
@@ -188,10 +268,11 @@ export default function Sidebar() {
 
               <button
                 type="button"
+                aria-label="Sair"
                 onClick={() => setOpenLogoutModal(true)}
                 className="rounded-lg p-2 transition hover:bg-white/10"
               >
-                <LogOut className="h-5 w-5 text-white" />
+                <LogOut aria-hidden="true" className="h-5 w-5 text-white" />
               </button>
             </div>
           </div>
@@ -205,10 +286,9 @@ export default function Sidebar() {
 
       <div className="max-lg:hidden flex h-full min-h-screen flex-col justify-between bg-[var(--color-brand-tertiary)] px-4 py-5 text-white">
         <div>
-          {/* LOGO */}
           <div className="mb-8 flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
-              <Wallet className="h-5 w-5 text-[var(--color-brand-primary)]" />
+              <Wallet className="h-5 w-5 text-[var(--color-brand-tertiary)]" />
             </div>
 
             <span className="text-[20px] font-semibold leading-[24px]">
@@ -216,59 +296,67 @@ export default function Sidebar() {
             </span>
           </div>
 
-          <nav className="flex flex-col gap-2">
-            {menuItems.map((item) => {
-              const isActive = item.href === "/transacoes";
-              const isDisabled = item.disabled;
+          <nav
+  className="flex flex-col gap-2"
+  aria-label="Menu principal"
+>
+  {menuItems.map((item) => {
+    const isActive = item.href === "/transacoes";
+    const isDisabled = item.disabled;
 
-              const baseClass =
-                "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
+    const baseClass =
+      "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
 
-              const activeClass = isActive
-                ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
-                : "text-white hover:bg-[var(--color-brand-secondary)]/20";
+    const activeClass = isActive
+      ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
+      : "text-white hover:bg-[var(--color-brand-secondary)]/20";
 
-              const disabledClass =
-                "text-white/40 cursor-not-allowed opacity-60";
+    const disabledClass =
+      "text-white/40 cursor-not-allowed opacity-60";
 
-              if (isDisabled) {
-                return (
-                  <div
-                    key={item.label}
-                    title="Disponível em breve"
-                    className={`${baseClass} ${disabledClass}`}
-                  >
-                    {item.icon}
+    if (isDisabled) {
+      return (
+        <div
+          key={item.label}
+          title="Disponível em breve"
+          aria-disabled="true"
+          className={`${baseClass} ${disabledClass}`}
+        >
+          <item.icon />
 
-                    <span className="text-[16px] font-medium leading-[20px]">
-                      {item.label}
-                    </span>
+          <span className="text-[16px] font-medium leading-[20px]">
+            {item.label}
+          </span>
 
-                    <Lock className="ml-auto h-4 w-4 opacity-70" />
-                  </div>
-                );
-              }
+          <Lock
+            className="ml-auto h-4 w-4 opacity-70"
+            aria-hidden="true"
+          />
+        </div>
+      );
+    }
 
-              return (
-                <a
-                  key={item.label}
-                  href={item.href}
-                  className={`${baseClass} ${activeClass}`}
-                >
-                  {item.icon}
+    return (
+      <a
+        key={item.label}
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
+        className={`${baseClass} ${activeClass}`}
+      >
+        <item.icon />
 
-                  <span className="text-[16px] font-medium leading-[20px]">
-                    {item.label}
-                  </span>
-                </a>
-              );
-            })}
-          </nav>
+        <span className="text-[16px] font-medium leading-[20px]">
+          {item.label}
+        </span>
+      </a>
+    );
+  })}
+</nav>
         </div>
 
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-primary)]">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-semibold text-[var(--color-brand-tertiary)]">
               {isMounted ? userInitials : "U"}
             </div>
 
@@ -285,29 +373,30 @@ export default function Sidebar() {
 
           <button
             type="button"
+            aria-label="Sair"
             onClick={() => setOpenLogoutModal(true)}
             className="rounded-lg p-2 transition hover:bg-white/10"
           >
-            <LogOut className="h-5 w-5 text-white" />
+            <LogOut aria-hidden="true" className="h-5 w-5 text-white" />
           </button>
         </div>
       </div>
 
       <Dialog open={openLogoutModal} onOpenChange={setOpenLogoutModal}>
         <DialogContent className="sm:max-w-sm" showCloseButton={false}>
-          <DialogHeader>
+          <DialogHeader tabIndex={0}>
             <DialogTitle>Deseja sair?</DialogTitle>
             <DialogDescription>
               Você será redirecionado para a tela de login.
             </DialogDescription>
           </DialogHeader>
+
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>
               Cancelar
             </DialogClose>
-            <Button onClick={handleLogout}>
-              Sair
-            </Button>
+
+            <Button onClick={handleLogout}>Sair</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1,8 +1,6 @@
 "use client";
 
-
-
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ShoppingBag } from "lucide-react";
 import {
   Dialog,
@@ -31,6 +29,22 @@ export function DeleteTransactionModal({
 }: DeleteTransactionModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalDescriptionRef = useRef<HTMLDivElement>(null);
+
+  const amount = transaction?.amount ?? 0;
+  const formatted = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
+
+  const transactionText = transaction
+    ? `${transaction.description}, ${amount < 0 ? "despesa" : "receita"} de ${formatted}`
+    : "";
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        modalDescriptionRef.current?.focus();
+      }, 100);
+    }
+  }, [open]);
 
   async function handleDelete() {
     if (!transaction) return;
@@ -47,17 +61,27 @@ export function DeleteTransactionModal({
     }
   }
 
-  const amount = transaction?.amount ?? 0;
-  const formatted = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-6 gap-0" showCloseButton>
+      <DialogContent
+        className="sm:max-w-[420px] p-6 gap-0"
+        showCloseButton
+        aria-labelledby="remove-transaction-title"
+        aria-describedby="remove-transaction-description"
+      >
         <DialogHeader className="mb-2">
-          <DialogTitle>Remover Transação</DialogTitle>
+          <DialogTitle id="remove-transaction-title">
+            Remover Transação
+          </DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col gap-2 my-2">
+        <div
+          ref={modalDescriptionRef}
+          tabIndex={-1}
+          id="remove-transaction-description"
+          className="flex flex-col gap-2 my-2 outline-none"
+          aria-label={`Remover Transação. Tem certeza que deseja remover essa transação? ${transactionText}`}
+        >
           <p className="text-base leading-relaxed text-card-foreground">
             Tem certeza que deseja remover essa transação?
           </p>
@@ -65,27 +89,38 @@ export function DeleteTransactionModal({
           {transaction && (
             <div className="flex items-center justify-between py-3">
               <div className="flex items-center gap-2">
-                <span className="p-2 rounded-full flex items-center justify-center text-brand-primary bg-brand-secondary">
+                <span
+                  aria-hidden="true"
+                  className="p-2 rounded-full flex items-center justify-center text-brand-primary bg-brand-secondary"
+                >
                   <ShoppingBag size={20} />
                 </span>
-                <h6>{transaction.description}</h6>
+
+                <h3 aria-hidden="true">{transaction.description}</h3>
               </div>
-              <h6 className={amount < 0 ? "text-feedback-error" : "text-primary"}>
+
+              <h3
+                aria-hidden="true"
+                className={amount < 0 ? "text-feedback-error" : "text-primary"}
+              >
                 {amount < 0 ? "- " : "+ "}
                 {formatted}
-              </h6>
+              </h3>
             </div>
           )}
 
-          {error && <p className="text-caption text-feedback-error">{error}</p>}
+          {error && (
+            <p role="alert" className="text-caption text-feedback-error">
+              {error}
+            </p>
+          )}
         </div>
 
         <DialogFooter className="mt-4 bg-white border-none">
-          <DialogClose
-            render={<Button variant="outline" disabled={loading} />}
-          >
+          <DialogClose render={<Button variant="outline" disabled={loading} />}>
             Cancelar
           </DialogClose>
+
           <Button
             onClick={handleDelete}
             disabled={loading}
