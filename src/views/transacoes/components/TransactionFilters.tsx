@@ -114,9 +114,15 @@ export function TransactionFilters({
       </div>
 
       <div className="flex flex-col gap-1 w-full sm:w-48">
-        <Label className="text-label">Tipo</Label>
+        <Label id="transaction-type-label" className="text-label">
+          Tipo
+        </Label>
         <Select value={filterType} onValueChange={onTypeChange}>
-          <SelectTrigger className="w-full cursor-pointer">
+          <SelectTrigger
+            aria-labelledby="transaction-type-label"
+            aria-label="Filtrar por tipo de transação"
+            className="w-full cursor-pointer"
+          >
             <SelectValue placeholder="Todos os tipos">
               {(v) => TYPE_LABELS[v as string] ?? "Todos os tipos"}
             </SelectValue>

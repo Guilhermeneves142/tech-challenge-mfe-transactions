@@ -36,28 +36,10 @@ type User = {
 // Links apontam para outras zonas (host/auth). No multizone a navegação entre
 // zonas é hard navigation (<a>), senão o basePath /transacoes prefixaria as URLs.
 const menuItems = [
-  {
-    label: "Dashboard",
-    href: "/dashboard",
-    icon: <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />,
-  },
-  {
-    label: "Transações",
-    href: "/transacoes",
-    icon: <List className="h-5 w-5 shrink-0" aria-hidden />,
-  },
-  {
-    label: "Planejamento",
-    href: "/planejamento",
-    icon: <Disc className="h-5 w-5 shrink-0" aria-hidden />,
-    disabled: true,
-  },
-  {
-    label: "Perfil",
-    href: "/perfil",
-    icon: <User className="h-5 w-5 shrink-0" aria-hidden />,
-    disabled: true,
-  },
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Transações", href: "/transacoes", icon: List },
+  { label: "Planejamento", href: "/planejamento", icon: Disc, disabled: true },
+  { label: "Perfil", href: "/perfil", icon: User, disabled: true },
 ];
 
 function getInitials(name: string) {
@@ -92,6 +74,7 @@ function NavMenu({ onNavigate }: { onNavigate?: () => void }) {
         {menuItems.map((item) => {
           // Esta zona é sempre a de transações: o item ativo é fixo.
           const isActive = item.href === "/transacoes";
+          const Icon = item.icon;
           return (
             <li key={item.label}>
               {item.disabled ? (
@@ -100,7 +83,7 @@ function NavMenu({ onNavigate }: { onNavigate?: () => void }) {
                   aria-disabled="true"
                   className={`${navItemClass} cursor-not-allowed text-white/40 opacity-60`}
                 >
-                  {item.icon}
+                  <Icon className="h-5 w-5 shrink-0" aria-hidden />
                   <span className="text-[16px] font-medium leading-[20px]">
                     {item.label}
                   </span>
@@ -117,7 +100,7 @@ function NavMenu({ onNavigate }: { onNavigate?: () => void }) {
                       : "text-white hover:bg-[var(--color-brand-secondary)]/20"
                   }`}
                 >
-                  {item.icon}
+                  <Icon className="h-5 w-5 shrink-0" aria-hidden />
                   <span className="text-[16px] font-medium leading-[20px]">
                     {item.label}
                   </span>
@@ -271,7 +254,7 @@ export default function Sidebar() {
 
       <Dialog open={openLogoutModal} onOpenChange={setOpenLogoutModal}>
         <DialogContent className="sm:max-w-sm" showCloseButton={false}>
-          <DialogHeader>
+          <DialogHeader tabIndex={0}>
             <DialogTitle>Deseja sair?</DialogTitle>
             <DialogDescription>
               Você será redirecionado para a tela de login.

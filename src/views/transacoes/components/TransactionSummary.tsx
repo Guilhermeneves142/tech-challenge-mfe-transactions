@@ -31,11 +31,19 @@ export function TransactionSummary({ summary }: TransactionSummaryProps) {
   ];
 
   return (
-    <section className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6">
+    <section
+      aria-label="Resumo financeiro"
+      className="grid grid-cols-1 sm:mx-10 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 xl:gap-10 my-6"
+    >
       {cards.map((card) => (
         <Card key={card.label} className={`p-6 ${card.className}`}>
-          <h4>{card.label}</h4>
-          <h2 className="pe-4 -mt-3">{formatCurrency(card.value)}</h2>
+          <span className="sr-only">
+            {card.label}: {formatCurrency(card.value)}
+          </span>
+          <h4 aria-hidden="true">{card.label}</h4>
+          <h2 aria-hidden="true" className="pe-4 -mt-3">
+            {formatCurrency(card.value)}
+          </h2>
         </Card>
       ))}
     </section>

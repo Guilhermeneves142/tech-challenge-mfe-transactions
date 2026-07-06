@@ -19,6 +19,12 @@ function formatSigned(amount: number) {
   };
 }
 
+// Descrição acessível da transação para os aria-labels das ações.
+function describeTransaction({ description, amount }: Transaction) {
+  const value = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
+  return `${description}, ${amount < 0 ? "despesa" : "receita"} de ${value}`;
+}
+
 interface ColumnHandlers {
   categories: Category[];
   onEdit: (transaction: Transaction) => void;
@@ -106,36 +112,39 @@ export function buildTransactionColumns({
       header: () => (
         <p className="text-label text-card-foreground w-full text-right">AÇÕES</p>
       ),
-      cell: ({ row }) => (
-        <div className="flex gap-1 justify-end items-center">
-          {row.original.attachment && (
+      cell: ({ row }) => {
+        const summary = describeTransaction(row.original);
+        return (
+          <div className="flex gap-1 justify-end items-center">
+            {row.original.attachment && (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Baixar anexo da transação: ${summary}`}
+                onClick={() => onDownload(row.original)}
+              >
+                <Download className="size-4" aria-hidden />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
-              aria-label={`Baixar anexo da transação: ${row.original.description}`}
-              onClick={() => onDownload(row.original)}
+              aria-label={`Editar transação: ${summary}`}
+              onClick={() => onEdit(row.original)}
             >
-              <Download className="size-4" aria-hidden />
+              <Pencil className="size-4" aria-hidden />
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Editar transação: ${row.original.description}`}
-            onClick={() => onEdit(row.original)}
-          >
-            <Pencil className="size-4" aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label={`Excluir transação: ${row.original.description}`}
-            onClick={() => onDelete(row.original)}
-          >
-            <Trash2 className="size-4" aria-hidden />
-          </Button>
-        </div>
-      ),
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Excluir transação: ${summary}`}
+              onClick={() => onDelete(row.original)}
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 }
