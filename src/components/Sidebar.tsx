@@ -61,7 +61,7 @@ function Logo() {
   return (
     <div className="flex items-center gap-3">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white">
-        <Wallet className="h-5 w-5 text-[var(--color-brand-primary)]" aria-hidden />
+        <Wallet className="h-5 w-5 text-[var(--color-brand-tertiary)]" aria-hidden />
       </span>
       <span className="text-[20px] font-semibold leading-[24px]">FinanceApp</span>
     </div>
@@ -82,7 +82,7 @@ function NavMenu({ onNavigate }: { onNavigate?: () => void }) {
                 <span
                   title="Disponível em breve"
                   aria-disabled="true"
-                  className={`${navItemClass} cursor-not-allowed text-white/40 opacity-60`}
+                  className={`${navItemClass} text-white cursor-not-allowed opacity-70`}
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden />
                   <span className="text-[16px] font-medium leading-[20px]">
@@ -97,12 +97,21 @@ function NavMenu({ onNavigate }: { onNavigate?: () => void }) {
                   aria-current={isActive ? "page" : undefined}
                   className={`${navItemClass} ${
                     isActive
-                      ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-primary)]"
+                      ? "bg-[var(--color-brand-secondary)] text-[var(--color-brand-tertiary)]"
                       : "text-white hover:bg-[var(--color-brand-secondary)]/20"
                   }`}
                 >
+                  <span
+                    aria-hidden="true" className={
+                      isActive ? "text-[var(--color-brand-tertiary)]" : "text-white"
+                    }
+                  >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden />
-                  <span className="text-[16px] font-medium leading-[20px]">
+                  </span>
+                  <span className={`text-[16px] leading-[20px] ${
+                    isActive ? "font-bold text-[var(--color-brand-tertiary)]" : "font-medium text-white"
+                  }` }>
+
                     {item.label}
                   </span>
                 </a>
