@@ -1,4 +1,4 @@
-import type { Category, Transaction } from "@/lib/api";
+import type { Transaction } from "@/lib/api";
 
 export type TransactionFormType = "credit" | "debit";
 
