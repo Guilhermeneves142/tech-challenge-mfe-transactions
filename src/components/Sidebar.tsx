@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   User,
   Wallet,
+  UserIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -229,7 +230,7 @@ export default function Sidebar() {
             type="button"
             aria-label="Fechar menu"
             onClick={() => setOpenMobileMenu(false)}
-            className="fixed inset-0 z-40 bg-black/30 lg:hidden"
+            className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           />
         </>
       )}
