@@ -11,7 +11,7 @@ import {
   DialogClose,
   Button,
 } from "@vandrei/finance-ui";
-import { api } from "@/lib/api";
+import { useDeleteTransaction } from "@/lib/queries/transactions";
 import type { Transaction } from "@/lib/api";
 
 export interface DeleteTransactionModalProps {
@@ -27,9 +27,10 @@ export function DeleteTransactionModal({
   transaction,
   onSuccess,
 }: DeleteTransactionModalProps) {
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const modalDescriptionRef = useRef<HTMLDivElement>(null);
+  const deleteTransaction = useDeleteTransaction();
+  const loading = deleteTransaction.isPending;
 
   const amount = transaction?.amount ?? 0;
   const formatted = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
@@ -49,15 +50,12 @@ export function DeleteTransactionModal({
   async function handleDelete() {
     if (!transaction) return;
     setError(null);
-    setLoading(true);
     try {
-      await api.deleteTransaction(transaction.id);
+      await deleteTransaction.mutateAsync(transaction.id);
       onSuccess?.(transaction.id);
       onOpenChange(false);
     } catch {
       setError("Não foi possível remover a transação. Tente novamente.");
-    } finally {
-      setLoading(false);
     }
   }
 

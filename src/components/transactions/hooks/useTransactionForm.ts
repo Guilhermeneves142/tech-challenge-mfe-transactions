@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { api } from "@/lib/api";
+import {
+  useCreateTransaction,
+  useUpdateTransaction,
+} from "@/lib/queries/transactions";
 import { fileToDataUrl, validateAttachmentFile } from "@/lib/file";
 import type {
   TransactionFormState,
@@ -46,8 +49,10 @@ export function useTransactionForm({
   const [form, setForm] = useState<TransactionFormState>(() =>
     buildInitialState(initialData),
   );
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const createTransaction = useCreateTransaction();
+  const updateTransaction = useUpdateTransaction();
+  const loading = createTransaction.isPending || updateTransaction.isPending;
 
   function setField<K extends keyof TransactionFormState>(
     key: K,
@@ -132,19 +137,16 @@ export function useTransactionForm({
       attachmentName: form.attachmentName || "",
     };
 
-    setLoading(true);
     try {
       const result =
         mode === "edit" && transactionId
-          ? await api.updateTransaction(transactionId, payload)
-          : await api.createTransaction(payload);
+          ? await updateTransaction.mutateAsync({ id: transactionId, body: payload })
+          : await createTransaction.mutateAsync(payload);
       onSuccess?.(result);
       reset();
       onClose();
     } catch {
       setError("Não foi possível salvar a transação. Tente novamente.");
-    } finally {
-      setLoading(false);
     }
   }
 
