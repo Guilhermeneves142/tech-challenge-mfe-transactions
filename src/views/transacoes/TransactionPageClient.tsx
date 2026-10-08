@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { useDebouncedCallback } from "use-debounce";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +15,12 @@ import type { TransactionFormState } from "../../components/transactions/types";
 import { RootState } from "@/store";
 import { addCategories } from "@/features/categories/categories";
 import { downloadAttachment } from "@/lib/file";
-import { useTransactionList } from "./hooks/useTransactionList";
+import {
+  useCategories,
+  useTransactionsInfinite,
+  useTransactionsSummary,
+  type TransactionFilters as TransactionFiltersType,
+} from "@/lib/queries/transactions";
 import { buildTransactionColumns } from "./components/transactionColumns";
 import { TransactionFilters } from "./components/TransactionFilters";
 import { TransactionSummary } from "./components/TransactionSummary";
@@ -36,20 +42,59 @@ export function TransactionPageClient() {
     useState<Partial<TransactionFormState>>();
   const [editingId, setEditingId] = useState<number>();
 
+  const filters: TransactionFiltersType = useMemo(() => {
+    const params: TransactionFiltersType = {};
+    if (filterDescription) params.descriptionLike = filterDescription;
+    if (filterType && filterType !== "all") {
+      params.type = filterType as "credit" | "debit";
+    }
+    if (filterRange?.from) {
+      params.dateGte = format(filterRange.from, "yyyy-MM-dd") + "T00:00:00.000Z";
+    }
+    if (filterRange?.to) {
+      params.dateLte = format(filterRange.to, "yyyy-MM-dd") + "T23:59:59.999Z";
+    }
+    return params;
+  }, [filterDescription, filterType, filterRange]);
+
   const {
-    transactions,
-    summary,
-    loadingInitial,
-    loadingMore,
-    hasMore,
-    sentinelRef,
-    refetch,
-  } = useTransactionList({
-    filterDescription,
-    filterType,
-    filterRange,
-    onCategoriesLoaded: (items) => dispatch(addCategories(items)),
-  });
+    data: transactionsPages,
+    isLoading: loadingInitial,
+    isFetchingNextPage: loadingMore,
+    hasNextPage,
+    fetchNextPage,
+  } = useTransactionsInfinite(filters);
+
+  const transactions = useMemo(
+    () => transactionsPages?.pages.flat() ?? [],
+    [transactionsPages]
+  );
+
+  const { data: summary } = useTransactionsSummary(filters);
+  const { data: fetchedCategories } = useCategories();
+
+  useEffect(() => {
+    if (fetchedCategories) dispatch(addCategories(fetchedCategories));
+  }, [fetchedCategories, dispatch]);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !loadingMore) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, loadingMore]);
 
   const pushDescriptionDebounced = useDebouncedCallback(
     (value: string) => setFilterDescription(value),
@@ -130,7 +175,7 @@ export function TransactionPageClient() {
                 </span>
               </div>
             )}
-            {!hasMore && transactions.length > 0 && (
+            {!hasNextPage && transactions.length > 0 && (
               <p className="text-sm text-muted-foreground">
                 Você chegou ao fim da listagem
               </p>
@@ -146,14 +191,12 @@ export function TransactionPageClient() {
         mode={editingTransaction ? "edit" : "create"}
         initialData={editingTransaction}
         transactionId={editingId}
-        onSuccess={refetch}
       />
 
       <DeleteTransactionModal
         open={deleteModalOpen}
         onOpenChange={setDeleteModalOpen}
         transaction={deletingTransaction}
-        onSuccess={refetch}
       />
     </>
   );
