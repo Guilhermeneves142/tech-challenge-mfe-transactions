@@ -7,10 +7,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { useDispatch, useSelector } from "react-redux";
 import { DataTable } from "@vandrei/finance-ui";
 import type { Transaction } from "@/lib/api";
-import {
-  DeleteTransactionModal,
-  TransactionModal,
-} from "@/components/transactions";
+import dynamic from "next/dynamic";
 import type { TransactionFormState } from "../../components/transactions/types";
 import { RootState } from "@/store";
 import { addCategories } from "@/features/categories/categories";
@@ -24,6 +21,13 @@ import {
 import { buildTransactionColumns } from "./components/transactionColumns";
 import { TransactionFilters } from "./components/TransactionFilters";
 import { TransactionSummary } from "./components/TransactionSummary";
+
+const TransactionModal = dynamic(() =>
+  import("@/components/transactions").then((m) => m.TransactionModal)
+);
+const DeleteTransactionModal = dynamic(() =>
+  import("@/components/transactions").then((m) => m.DeleteTransactionModal)
+);
 
 export function TransactionPageClient() {
   const dispatch = useDispatch();
@@ -184,20 +188,24 @@ export function TransactionPageClient() {
         </>
       )}
 
-      <TransactionModal
-        key={editingId ?? "create"}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        mode={editingTransaction ? "edit" : "create"}
-        initialData={editingTransaction}
-        transactionId={editingId}
-      />
+      {modalOpen && (
+        <TransactionModal
+          key={editingId ?? "create"}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          mode={editingTransaction ? "edit" : "create"}
+          initialData={editingTransaction}
+          transactionId={editingId}
+        />
+      )}
 
-      <DeleteTransactionModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        transaction={deletingTransaction}
-      />
+      {deleteModalOpen && (
+        <DeleteTransactionModal
+          open={deleteModalOpen}
+          onOpenChange={setDeleteModalOpen}
+          transaction={deletingTransaction}
+        />
+      )}
     </>
   );
 }
