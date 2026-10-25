@@ -1,6 +1,7 @@
 "use client";
 
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { useDebouncedCallback } from "use-debounce";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus, Search, X } from "lucide-react";
 import type { DateRange } from "react-day-picker";
@@ -19,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@vandrei/finance-ui";
+import type { TransactionTypeFilter } from "@/domain";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { selectFilters } from "@/store/selectors";
+import {
+  createRequested,
+  dateRangeChanged,
+  dateRangeCleared,
+  descriptionFilterChanged,
+  typeFilterChanged,
+} from "@/store/slices/transactionsUi.slice";
 
 function formatRangeLabel(range: DateRange | undefined) {
   if (!range?.from) return null;
@@ -31,25 +42,31 @@ const TYPE_LABELS: Record<string, string> = {
   debit: "Despesa",
 };
 
-interface TransactionFiltersProps {
-  filterType: string;
-  filterRange: DateRange | undefined;
-  onDescriptionChange: (value: string) => void;
-  onTypeChange: (value: string | null) => void;
-  onRangeChange: (range: DateRange | undefined) => void;
-  onClearRange: () => void;
-  onNewTransaction: () => void;
-}
+// Store guarda strings "yyyy-MM-dd" (serializável); o Calendar trabalha com Date.
+const toDate = (value?: string) => (value ? parseISO(value) : undefined);
+const toDay = (date?: Date) => (date ? format(date, "yyyy-MM-dd") : undefined);
 
-export function TransactionFilters({
-  filterType,
-  filterRange,
-  onDescriptionChange,
-  onTypeChange,
-  onRangeChange,
-  onClearRange,
-  onNewTransaction,
-}: TransactionFiltersProps) {
+/** Filtros conectados ao Redux: lê e despacha direto, sem prop drilling. */
+export function TransactionFilters() {
+  const dispatch = useAppDispatch();
+  const filters = useAppSelector(selectFilters);
+
+  const filterType = filters.type === "all" ? "" : filters.type;
+  const filterRange: DateRange | undefined = filters.from
+    ? { from: toDate(filters.from), to: toDate(filters.to) }
+    : undefined;
+
+  const onDescriptionChange = useDebouncedCallback(
+    (value: string) => dispatch(descriptionFilterChanged(value)),
+    300
+  );
+  const onTypeChange = (value: string | null) =>
+    dispatch(typeFilterChanged((value || "all") as TransactionTypeFilter));
+  const onRangeChange = (range: DateRange | undefined) =>
+    dispatch(dateRangeChanged({ from: toDay(range?.from), to: toDay(range?.to) }));
+  const onClearRange = () => dispatch(dateRangeCleared());
+  const onNewTransaction = () => dispatch(createRequested());
+
   const rangeLabel = formatRangeLabel(filterRange);
 
   return (

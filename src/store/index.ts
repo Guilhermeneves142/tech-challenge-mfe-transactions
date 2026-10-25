@@ -1,13 +1,16 @@
 import { configureStore } from "@reduxjs/toolkit";
+import transactionsUi from "./slices/transactionsUi.slice";
 
-import categories from "../features/categories/categories";
+/**
+ * Factory (e não singleton): no App Router cada request/árvore ganha seu store,
+ * evitando vazar estado entre usuários no SSR.
+ */
+export function makeStore() {
+  return configureStore({
+    reducer: { transactionsUi },
+  });
+}
 
-const store = configureStore({
-  reducer: {
-    categories,
-  },
-});
-
-export type RootState = ReturnType<typeof store.getState>;
-
-export default store;
+export type AppStore = ReturnType<typeof makeStore>;
+export type RootState = ReturnType<AppStore["getState"]>;
+export type AppDispatch = AppStore["dispatch"];

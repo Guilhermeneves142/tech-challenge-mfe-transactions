@@ -1,74 +1,24 @@
 // ─────────────────────────────────────────────
-//  API Client — aponta para o Mock Server
+//  Infra · API Client — aponta para o Mock Server
 //  Base URL configurável via variável de ambiente
 // ─────────────────────────────────────────────
 
 // "/api" (relativo): no multizone o navegador está na origem do host,
 // que serve as Route Handlers. Override via NEXT_PUBLIC_API_URL se preciso.
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api";
+import type {
+  Balance,
+  Budget,
+  Category,
+  Dashboard,
+  NewTransaction,
+  Report,
+  Transaction,
+  TransactionSummary,
+  User,
+} from "@/domain";
+import { API_BASE_URL, createHttpClient } from "./http-client";
 
-// ── Tipos ─────────────────────────────────────
-
-export interface User {
-  id: number;
-  name: string;
-  email: string;
-  initials: string;
-  plan: string;
-  avatar: string | null;
-}
-
-export interface Balance {
-  current: number;
-  variation: number;
-  variationLabel: string;
-}
-
-export interface Transaction {
-  id: number;
-  description: string;
-  category: string;
-  amount: number;
-  date: string;
-  dateLabel: string;
-  type: "credit" | "debit";
-  attachment: string;
-  attachmentName?: string;
-}
-
-export interface Category {
-  id: string;
-  label: string;
-  icon: string;
-}
-
-export interface Budget {
-  id: number;
-  category: string;
-  categoryLabel: string;
-  limit: number;
-  spent: number;
-  period: string;
-}
-
-export interface Report {
-  month: string;
-  income: number;
-  expenses: number;
-}
-
-export interface TransactionSummary {
-  income: number;
-  expense: number;
-  currentBalance: number;
-  future: number;
-}
-
-export interface Dashboard {
-  user: User;
-  balance: Balance;
-  recentTransactions: Transaction[];
-}
+const request = createHttpClient(API_BASE_URL);
 
 export interface TransactionParams {
   _sort?: keyof Transaction;
@@ -95,21 +45,6 @@ const PARAM_KEY_MAP: Partial<Record<keyof TransactionParams, string>> = {
 const REPORT_PARAM_KEY_MAP: Partial<Record<keyof ReportParams, string>> = {
   monthLike: "month_like",
 };
-
-// ── Fetch base ────────────────────────────────
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
-  }
-
-  return res.json() as Promise<T>;
-}
 
 function toQueryString(params: TransactionParams): string {
   const qs = new URLSearchParams(
@@ -177,14 +112,14 @@ export const api = {
   getDashboard: () => request<Dashboard>("/dashboard"),
 
   /** Cria uma nova transação */
-  createTransaction: (body: Omit<Transaction, "id">) =>
+  createTransaction: (body: NewTransaction) =>
     request<Transaction>("/transactions", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
   /** Atualiza uma transação existente */
-  updateTransaction: (id: number, body: Partial<Omit<Transaction, "id">>) =>
+  updateTransaction: (id: number, body: Partial<NewTransaction>) =>
     request<Transaction>(`/transactions/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),

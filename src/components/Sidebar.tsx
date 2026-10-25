@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   LogOut,
   Lock,
@@ -23,16 +23,10 @@ import {
   DialogClose,
   Button,
 } from "@vandrei/finance-ui";
-import { clearAuth } from "@/lib/auth-storage";
+import { getInitials } from "@/domain";
+import { clearAuth } from "@/infra/http/auth-storage";
+import { useCurrentUser } from "@/lib/queries/user";
 
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  initials?: string;
-  plan?: string;
-  avatar?: string | null;
-};
 
 // Links apontam para outras zonas (host/auth). No multizone a navegação entre
 // zonas é hard navigation (<a>), senão o basePath /transacoes prefixaria as URLs.
@@ -43,16 +37,6 @@ const menuItems = [
   { label: "Perfil", href: "/perfil", icon: User, disabled: true },
 ];
 
-function getInitials(name: string) {
-  return name
-    .trim()
-    .split(" ")
-    .filter(Boolean)
-    .map((word) => word[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
 
 const navItemClass =
   "flex h-12 items-center gap-3 rounded-lg px-4 transition-all duration-200";
@@ -166,21 +150,10 @@ function UserBox({
 export default function Sidebar() {
   const [openLogoutModal, setOpenLogoutModal] = useState(false);
   const [openMobileMenu, setOpenMobileMenu] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const { data: user, isFetched: isMounted } = useCurrentUser();
 
-  useEffect(() => {
-    // Lido apenas no cliente para não divergir da hidratação do servidor.
-    const loadUser = async () => {
-      const storedUser = localStorage.getItem("finance-app-user");
-      if (storedUser) setUser(JSON.parse(storedUser));
-      setIsMounted(true);
-    };
-    loadUser();
-  }, []);
-
-  function handleLogout() {
-    clearAuth();
+  async function handleLogout() {
+    await clearAuth();
     setOpenLogoutModal(false);
     setOpenMobileMenu(false);
     // Navegação entre zonas (transacoes -> auth) é hard navigation.
