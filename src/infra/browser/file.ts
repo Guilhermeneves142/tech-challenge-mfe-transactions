@@ -1,11 +1,5 @@
-const MAX_ATTACHMENT_SIZE = 2 * 1024 * 1024;
-
-const ALLOWED_MIME_TYPES = [
-  "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/jpg",
-];
+// Infra · APIs do navegador para arquivos (FileReader, <a download>).
+// A regra de validação do anexo mora em @/domain (validateAttachment).
 
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -14,16 +8,6 @@ export function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-export function validateAttachmentFile(file: File): string | null {
-  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-    return "Formato não suportado. Use PDF, PNG ou JPG.";
-  }
-  if (file.size > MAX_ATTACHMENT_SIZE) {
-    return "O arquivo deve ter no máximo 2 MB.";
-  }
-  return null;
 }
 
 export function downloadAttachment(

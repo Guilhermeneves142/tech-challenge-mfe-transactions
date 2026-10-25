@@ -1,53 +1,50 @@
 "use client";
 
+// Adapter de apresentação: React Query = estado de SERVIDOR (cache, paginação,
+// invalidação). Regras ficam no domínio e nos casos de uso.
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { api } from "@/lib/api";
-import type { Transaction, TransactionParams } from "@/lib/api";
-
-export const PAGE_SIZE = 10;
-
-export type TransactionFilters = Omit<TransactionParams, "_page" | "_limit">;
+import { nextPageParam, type SaveTransactionInput } from "@/application/transactions";
+import { repositories, useCases } from "@/di/container";
+import { toTransactionQuery, type TransactionFilterState } from "@/domain";
 
 const TRANSACTIONS_KEY_PREFIX = "transactions";
 const SUMMARY_KEY_PREFIX = "transactions-summary";
 export const CATEGORIES_QUERY_KEY = ["categories"] as const;
 
-function transactionsKey(filters: TransactionFilters) {
-  return [TRANSACTIONS_KEY_PREFIX, filters] as const;
-}
+// A chave usa a query NORMALIZADA: " mercado " e "mercado" compartilham cache.
+const transactionsKey = (filters: TransactionFilterState) =>
+  [TRANSACTIONS_KEY_PREFIX, toTransactionQuery(filters)] as const;
+const summaryKey = (filters: TransactionFilterState) =>
+  [SUMMARY_KEY_PREFIX, toTransactionQuery(filters)] as const;
 
-function summaryKey(filters: TransactionFilters) {
-  return [SUMMARY_KEY_PREFIX, filters] as const;
-}
-
-/** Lista de transações com paginação por scroll infinito (cache por conjunto de filtros). */
-export function useTransactionsInfinite(filters: TransactionFilters) {
+/** Lista com scroll infinito (cache por conjunto de filtros). */
+export function useTransactionsInfinite(filters: TransactionFilterState) {
   return useInfiniteQuery({
     queryKey: transactionsKey(filters),
-    queryFn: ({ pageParam }) =>
-      api.getTransactions({ ...filters, _page: pageParam, _limit: PAGE_SIZE }),
+    queryFn: ({ pageParam }) => useCases.listTransactions(filters, pageParam),
     initialPageParam: 1,
-    getNextPageParam: (lastPage, allPages) =>
-      lastPage.length === PAGE_SIZE ? allPages.length + 1 : undefined,
+    getNextPageParam: (lastPage, allPages) => nextPageParam(lastPage, allPages),
   });
 }
 
-export function useTransactionsSummary(filters: TransactionFilters) {
+export function useTransactionsSummary(filters: TransactionFilterState) {
   return useQuery({
     queryKey: summaryKey(filters),
-    queryFn: () => api.getTransactionsSummary(filters),
+    queryFn: () => useCases.getTransactionsSummary(filters),
   });
 }
 
+/** Categorias: estado de servidor que quase nunca muda → cache "eterno". */
 export function useCategories() {
   return useQuery({
     queryKey: CATEGORIES_QUERY_KEY,
-    queryFn: api.getCategories,
+    queryFn: () => repositories.transactions.listCategories(),
+    staleTime: Infinity,
   });
 }
 
@@ -59,35 +56,18 @@ function useInvalidateTransactions() {
   };
 }
 
-export function useCreateTransaction() {
+export function useSaveTransaction() {
   const invalidate = useInvalidateTransactions();
-
   return useMutation({
-    mutationFn: (body: Omit<Transaction, "id">) => api.createTransaction(body),
-    onSuccess: invalidate,
-  });
-}
-
-export function useUpdateTransaction() {
-  const invalidate = useInvalidateTransactions();
-
-  return useMutation({
-    mutationFn: ({
-      id,
-      body,
-    }: {
-      id: number;
-      body: Partial<Omit<Transaction, "id">>;
-    }) => api.updateTransaction(id, body),
+    mutationFn: (input: SaveTransactionInput) => useCases.saveTransaction(input),
     onSuccess: invalidate,
   });
 }
 
 export function useDeleteTransaction() {
   const invalidate = useInvalidateTransactions();
-
   return useMutation({
-    mutationFn: (id: number) => api.deleteTransaction(id),
+    mutationFn: (id: number) => useCases.deleteTransaction(id),
     onSuccess: invalidate,
   });
 }

@@ -1,11 +1,8 @@
 "use client";
 
 import { Card } from "@vandrei/finance-ui";
-import type { TransactionSummary as Summary } from "@/lib/api";
-
-function formatCurrency(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
+import type { TransactionSummary as Summary } from "@/domain";
+import { formatCurrency } from "@/shared/formatters/currency";
 
 interface TransactionSummaryProps {
   summary: Summary | undefined;

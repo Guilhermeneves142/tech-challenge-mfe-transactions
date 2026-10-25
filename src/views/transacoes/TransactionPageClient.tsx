@@ -1,62 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { format } from "date-fns";
-import type { DateRange } from "react-day-picker";
-import { useDebouncedCallback } from "use-debounce";
-import { useDispatch, useSelector } from "react-redux";
+import { useEffect, useMemo, useRef } from "react";
 import { DataTable } from "@vandrei/finance-ui";
-import type { Transaction } from "@/lib/api";
+import type { Transaction } from "@/domain";
 import {
   DeleteTransactionModal,
   TransactionModal,
 } from "@/components/transactions";
-import type { TransactionFormState } from "../../components/transactions/types";
-import { RootState } from "@/store";
-import { addCategories } from "@/features/categories/categories";
-import { downloadAttachment } from "@/lib/file";
+import { downloadAttachment } from "@/infra/browser/file";
 import {
   useCategories,
   useTransactionsInfinite,
   useTransactionsSummary,
-  type TransactionFilters as TransactionFiltersType,
 } from "@/lib/queries/transactions";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  selectDeletion,
+  selectEditor,
+  selectEditorDraft,
+  selectFilters,
+} from "@/store/selectors";
+import {
+  deleteRequested,
+  deletionClosed,
+  editorClosed,
+  editRequested,
+} from "@/store/slices/transactionsUi.slice";
 import { buildTransactionColumns } from "./components/transactionColumns";
 import { TransactionFilters } from "./components/TransactionFilters";
 import { TransactionSummary } from "./components/TransactionSummary";
 
 export function TransactionPageClient() {
-  const dispatch = useDispatch();
-  const categories = useSelector(
-    (state: RootState) => state.categories.categories
-  );
+  const dispatch = useAppDispatch();
 
-  const [filterDescription, setFilterDescription] = useState("");
-  const [filterType, setFilterType] = useState("");
-  const [filterRange, setFilterRange] = useState<DateRange | undefined>();
+  // Estado de UI (Redux)
+  const filters = useAppSelector(selectFilters);
+  const editor = useAppSelector(selectEditor);
+  const editorDraft = useAppSelector(selectEditorDraft);
+  const deletion = useAppSelector(selectDeletion);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-  const [deletingTransaction, setDeletingTransaction] = useState<Transaction>();
-  const [editingTransaction, setEditingTransaction] =
-    useState<Partial<TransactionFormState>>();
-  const [editingId, setEditingId] = useState<number>();
-
-  const filters: TransactionFiltersType = useMemo(() => {
-    const params: TransactionFiltersType = {};
-    if (filterDescription) params.descriptionLike = filterDescription;
-    if (filterType && filterType !== "all") {
-      params.type = filterType as "credit" | "debit";
-    }
-    if (filterRange?.from) {
-      params.dateGte = format(filterRange.from, "yyyy-MM-dd") + "T00:00:00.000Z";
-    }
-    if (filterRange?.to) {
-      params.dateLte = format(filterRange.to, "yyyy-MM-dd") + "T23:59:59.999Z";
-    }
-    return params;
-  }, [filterDescription, filterType, filterRange]);
-
+  // Estado de servidor (React Query)
   const {
     data: transactionsPages,
     isLoading: loadingInitial,
@@ -64,18 +47,13 @@ export function TransactionPageClient() {
     hasNextPage,
     fetchNextPage,
   } = useTransactionsInfinite(filters);
+  const { data: summary } = useTransactionsSummary(filters);
+  const { data: categories = [] } = useCategories();
 
   const transactions = useMemo(
     () => transactionsPages?.pages.flat() ?? [],
     [transactionsPages]
   );
-
-  const { data: summary } = useTransactionsSummary(filters);
-  const { data: fetchedCategories } = useCategories();
-
-  useEffect(() => {
-    if (fetchedCategories) dispatch(addCategories(fetchedCategories));
-  }, [fetchedCategories, dispatch]);
 
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -96,40 +74,6 @@ export function TransactionPageClient() {
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, loadingMore]);
 
-  const pushDescriptionDebounced = useDebouncedCallback(
-    (value: string) => setFilterDescription(value),
-    300
-  );
-
-  function handleTypeChange(value: string | null) {
-    setFilterType(!value || value === "all" ? "" : value);
-  }
-
-  function handleEdit(row: Transaction) {
-    setEditingId(row.id);
-    setEditingTransaction({
-      description: row.description,
-      category: row.category,
-      amount: Math.abs(row.amount).toString(),
-      date: row.date.split("T")[0],
-      type: row.amount < 0 ? "debit" : "credit",
-      attachment: row.attachment,
-      attachmentName: row.attachmentName,
-    });
-    setModalOpen(true);
-  }
-
-  function handleNewTransaction() {
-    setEditingId(undefined);
-    setEditingTransaction(undefined);
-    setModalOpen(true);
-  }
-
-  function handleDelete(row: Transaction) {
-    setDeletingTransaction(row);
-    setDeleteModalOpen(true);
-  }
-
   function handleDownloadAttachment(row: Transaction) {
     if (!row.attachment) return;
     downloadAttachment(row.attachment, row.attachmentName);
@@ -137,22 +81,16 @@ export function TransactionPageClient() {
 
   const columns = buildTransactionColumns({
     categories,
-    onEdit: handleEdit,
-    onDelete: handleDelete,
+    onEdit: (row) => dispatch(editRequested(row)),
+    onDelete: (row) => dispatch(deleteRequested(row)),
     onDownload: handleDownloadAttachment,
   });
 
+  const editingId = editor.transaction?.id;
+
   return (
     <>
-      <TransactionFilters
-        filterType={filterType}
-        filterRange={filterRange}
-        onDescriptionChange={pushDescriptionDebounced}
-        onTypeChange={handleTypeChange}
-        onRangeChange={setFilterRange}
-        onClearRange={() => setFilterRange(undefined)}
-        onNewTransaction={handleNewTransaction}
-      />
+      <TransactionFilters />
 
       <TransactionSummary summary={summary} />
 
@@ -186,17 +124,17 @@ export function TransactionPageClient() {
 
       <TransactionModal
         key={editingId ?? "create"}
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        mode={editingTransaction ? "edit" : "create"}
-        initialData={editingTransaction}
+        open={editor.open}
+        onOpenChange={(open) => !open && dispatch(editorClosed())}
+        mode={editorDraft ? "edit" : "create"}
+        initialData={editorDraft}
         transactionId={editingId}
       />
 
       <DeleteTransactionModal
-        open={deleteModalOpen}
-        onOpenChange={setDeleteModalOpen}
-        transaction={deletingTransaction}
+        open={deletion.open}
+        onOpenChange={(open) => !open && dispatch(deletionClosed())}
+        transaction={deletion.transaction}
       />
     </>
   );

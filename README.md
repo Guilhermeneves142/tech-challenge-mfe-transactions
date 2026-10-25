@@ -14,34 +14,47 @@ e os **modais** de criar, editar e excluir, tudo sob o `basePath` `/transacoes`.
 * **Next.js 16 / React 19 / TypeScript**
 * **Tailwind** + Design System `@vandrei/finance-ui`
 * **Tabela:** `@tanstack/react-table` (via `DataTable` da lib)
-* **Estado:** Redux Toolkit (categorias)
+* **Estado de servidor:** TanStack React Query (transações, resumo, categorias, usuário)
+* **Estado de UI:** Redux Toolkit (filtros e modais da tela)
 * **Multizone:** `basePath: "/transacoes"` ([next.config.ts](./next.config.ts))
 
 <br>
 
-## Estrutura
+## Estrutura (Clean Architecture)
 
-A página de transações é **componentizada**: o orquestrador é enxuto e cada
-responsabilidade (filtros, resumo, colunas da tabela e busca de dados) vive em
-seu próprio arquivo.
+Regra de dependência: `presentation → application → domain ← infra`.
+O domínio não conhece React, Redux, Next nem `fetch`.
 
 ```bash
 src/
-├── views/transacoes/
-│   ├── TransactionPageClient.tsx     # orquestrador (estado de UI + modais)
-│   ├── hooks/
-│   │   └── useTransactionList.ts     # busca + scroll infinito + refetch
-│   └── components/
-│       ├── TransactionFilters.tsx    # período, busca, tipo
-│       ├── TransactionSummary.tsx    # cards de receitas/despesas/saldo
-│       └── transactionColumns.tsx    # definição das colunas da tabela
-├── components/
-│   ├── Sidebar.tsx
-│   └── transactions/                 # TransactionModal · DeleteTransactionModal · hook de form
-├── features/categories/              # slice Redux
-├── store/                            # configuração do store
-└── lib/                              # api · auth-storage · categoryIcons · file
+├── domain/transactions/      #  entidades + regras puras
+│   ├── transaction.rules.ts  #   validação, parseAmount, toNewTransaction, toTransactionDraft
+│   ├── transaction-filters.ts#   estado dos filtros → query da API
+│   ├── attachment.rules.ts   #   tipos/tamanho permitidos do anexo
+│   └── transaction.repository.ts  # porta (contrato) de persistência
+├── application/transactions/ #  casos de uso: list, summary, save, delete
+├── infra/                    # http-client · finance-api · auth-api · repositório HTTP · FileReader
+├── di/container.ts           # composition root (casos de uso ↔ infra)
+├── lib/queries/              # React Query (estado de servidor)
+├── store/                    # Redux (estado de UI): slice transactionsUi, selectors, hooks tipados
+├── shared/formatters/        # moeda (apresentação)
+├── views/ · components/      #  apresentação
 ```
+
+### Gerenciamento de estado
+
+| Tipo de estado | Onde | Por quê |
+|---|---|---|
+| Transações, resumo, categorias, usuário | **React Query** | vem da API: precisa de cache, paginação, invalidação |
+| Filtros (descrição, tipo, período) | **Redux** `transactionsUi.filters` | compartilhado entre filtros, lista e resumo; serializável |
+| Modais (criar/editar/excluir) | **Redux** `transactionsUi.editor/deletion` | aberto por colunas da tabela e pelos filtros |
+| Campos do formulário, erro, loading | `useState` / mutation | local ao modal |
+
+> Categorias saíram do Redux: eram uma cópia do que o React Query já tinha em cache
+> (sincronizada via `useEffect` + `dispatch`). O store é criado por `makeStore()`
+> dentro do `StoreProvider` (um store por árvore, sem vazar estado no SSR).
+
+Testes unitários (domínio, casos de uso e Redux): `npm run test:unit`.
 
 <br>
 

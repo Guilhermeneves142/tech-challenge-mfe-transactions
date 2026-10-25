@@ -1,29 +1,23 @@
-import { useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import {
-  useCreateTransaction,
-  useUpdateTransaction,
-} from "@/lib/queries/transactions";
-import { fileToDataUrl, validateAttachmentFile } from "@/lib/file";
-import type {
-  TransactionFormState,
-  TransactionFormType,
-  CreateTransactionPayload,
-  TransactionModalMode,
-} from "../types";
-import type { Transaction } from "@/lib/api";
+"use client";
 
-function buildInitialState(
-  initialData?: Partial<TransactionFormState>,
-): TransactionFormState {
+// Hook de APRESENTAÇÃO: estado do formulário + ponte com o caso de uso.
+// Validação, conversão de valor, regras do anexo e montagem do payload → @/domain.
+import { useState } from "react";
+import {
+  EMPTY_TRANSACTION_DRAFT,
+  TransactionValidationError,
+  validateAttachment,
+  type Transaction,
+  type TransactionDraft,
+  type TransactionType,
+} from "@/domain";
+import { fileToDataUrl } from "@/infra/browser/file";
+import { useSaveTransaction } from "@/lib/queries/transactions";
+import type { TransactionModalMode } from "../types";
+
+function buildInitialState(initialData?: Partial<TransactionDraft>): TransactionDraft {
   return {
-    description: "",
-    amount: "",
-    category: "",
-    date: "",
-    type: "credit",
-    attachment: "",
+    ...EMPTY_TRANSACTION_DRAFT,
     ...initialData,
     attachmentName:
       initialData?.attachmentName ??
@@ -34,10 +28,12 @@ function buildInitialState(
 interface UseTransactionFormOptions {
   mode?: TransactionModalMode;
   transactionId?: number;
-  initialData?: Partial<TransactionFormState>;
+  initialData?: Partial<TransactionDraft>;
   onSuccess?: (transaction: Transaction) => void;
   onClose: () => void;
 }
+
+const SAVE_ERROR = "Não foi possível salvar a transação. Tente novamente.";
 
 export function useTransactionForm({
   mode = "create",
@@ -46,22 +42,15 @@ export function useTransactionForm({
   onSuccess,
   onClose,
 }: UseTransactionFormOptions) {
-  const [form, setForm] = useState<TransactionFormState>(() =>
-    buildInitialState(initialData),
-  );
+  const [form, setForm] = useState<TransactionDraft>(() => buildInitialState(initialData));
   const [error, setError] = useState<string | null>(null);
-  const createTransaction = useCreateTransaction();
-  const updateTransaction = useUpdateTransaction();
-  const loading = createTransaction.isPending || updateTransaction.isPending;
+  const saveTransaction = useSaveTransaction();
 
-  function setField<K extends keyof TransactionFormState>(
-    key: K,
-    value: TransactionFormState[K],
-  ) {
+  function setField<K extends keyof TransactionDraft>(key: K, value: TransactionDraft[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function setType(type: TransactionFormType) {
+  function setType(type: TransactionType) {
     setField("type", type);
   }
 
@@ -72,15 +61,11 @@ export function useTransactionForm({
 
   async function setAttachmentFile(file: File | null) {
     if (!file) {
-      setForm((prev) => ({
-        ...prev,
-        attachment: "",
-        attachmentName: undefined,
-      }));
+      setForm((prev) => ({ ...prev, attachment: "", attachmentName: undefined }));
       return;
     }
 
-    const validationError = validateAttachmentFile(file);
+    const validationError = validateAttachment(file);
     if (validationError) {
       setError(validationError);
       return;
@@ -89,64 +74,26 @@ export function useTransactionForm({
     setError(null);
     try {
       const dataUrl = await fileToDataUrl(file);
-      setForm((prev) => ({
-        ...prev,
-        attachment: dataUrl,
-        attachmentName: file.name,
-      }));
+      setForm((prev) => ({ ...prev, attachment: dataUrl, attachmentName: file.name }));
     } catch {
       setError("Não foi possível ler o arquivo. Tente novamente.");
     }
-  }
-
-  function validate(): string | null {
-    if (!form.description.trim()) return "Descrição é obrigatória.";
-    const parsed = parseFloat(form.amount.replace(",", "."));
-    if (isNaN(parsed) || parsed <= 0) return "Informe um valor válido.";
-    if (!form.category) return "Selecione uma categoria.";
-    if (!form.date) return "Selecione uma data.";
-    return null;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    const validationError = validate();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    const rawAmount = parseFloat(form.amount.replace(",", "."));
-    const now = new Date();
-    const dateLabel = format(
-      new Date(`${form.date}T${format(now, "HH:mm:ss")}`),
-      "dd MMM, HH:mm",
-      { locale: ptBR },
-    );
-
-    const payload: CreateTransactionPayload = {
-      description: form.description.trim(),
-      amount: form.type === "debit" ? -rawAmount : rawAmount,
-      category: form.category,
-      date: new Date(form.date).toISOString(),
-      dateLabel,
-      type: form.type,
-      attachment: form.attachment || "",
-      attachmentName: form.attachmentName || "",
-    };
-
     try {
-      const result =
-        mode === "edit" && transactionId
-          ? await updateTransaction.mutateAsync({ id: transactionId, body: payload })
-          : await createTransaction.mutateAsync(payload);
+      const result = await saveTransaction.mutateAsync({
+        draft: form,
+        id: mode === "edit" ? transactionId : undefined,
+      });
       onSuccess?.(result);
       reset();
       onClose();
-    } catch {
-      setError("Não foi possível salvar a transação. Tente novamente.");
+    } catch (err) {
+      setError(err instanceof TransactionValidationError ? err.message : SAVE_ERROR);
     }
   }
 
@@ -157,7 +104,7 @@ export function useTransactionForm({
 
   return {
     form,
-    loading,
+    loading: saveTransaction.isPending,
     error,
     setField,
     setType,
