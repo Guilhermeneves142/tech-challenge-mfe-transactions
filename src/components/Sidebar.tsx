@@ -170,17 +170,19 @@ export default function Sidebar() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    // Lido apenas no cliente para não divergir da hidratação do servidor.
-    const loadUser = async () => {
-      const storedUser = localStorage.getItem("finance-app-user");
-      if (storedUser) setUser(JSON.parse(storedUser));
-      setIsMounted(true);
-    };
-    loadUser();
+    const controller = new AbortController();
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "/api"}/auth/me`, {
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setUser(data?.user ?? null))
+      .catch(() => setUser(null))
+      .finally(() => setIsMounted(true));
+    return () => controller.abort();
   }, []);
 
-  function handleLogout() {
-    clearAuth();
+  async function handleLogout() {
+    await clearAuth();
     setOpenLogoutModal(false);
     setOpenMobileMenu(false);
     // Navegação entre zonas (transacoes -> auth) é hard navigation.
