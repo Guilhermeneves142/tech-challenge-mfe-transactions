@@ -14,8 +14,9 @@ e os **modais** de criar, editar e excluir, tudo sob o `basePath` `/transacoes`.
 * **Next.js 16 / React 19 / TypeScript**
 * **Tailwind** + Design System `@vandrei/finance-ui`
 * **Tabela:** `@tanstack/react-table` (via `DataTable` da lib)
-* **Estado de servidor:** TanStack React Query (transações, resumo, categorias, usuário)
-* **Estado de UI:** Redux Toolkit (filtros e modais da tela)
+* **Estado:** Redux Toolkit (categorias)
+* **Dados/cache:** TanStack React Query (`useInfiniteQuery`, mutations e invalidação) — hooks em `src/lib/queries/transactions.ts`
+* **Lazy loading:** modais de transação via `next/dynamic`
 * **Multizone:** `basePath: "/transacoes"` ([next.config.ts](./next.config.ts))
 
 <br>
