@@ -12,7 +12,8 @@ import {
   Button,
 } from "@vandrei/finance-ui";
 import { useDeleteTransaction } from "@/lib/queries/transactions";
-import type { Transaction } from "@/lib/api";
+import type { Transaction } from "@/domain";
+import { describeTransactionAmount, formatSignedCurrency } from "@/shared/formatters/currency";
 
 export interface DeleteTransactionModalProps {
   open: boolean;
@@ -33,10 +34,8 @@ export function DeleteTransactionModal({
   const loading = deleteTransaction.isPending;
 
   const amount = transaction?.amount ?? 0;
-  const formatted = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
-
   const transactionText = transaction
-    ? `${transaction.description}, ${amount < 0 ? "despesa" : "receita"} de ${formatted}`
+    ? describeTransactionAmount(transaction.description, amount)
     : "";
 
   useEffect(() => {
@@ -101,8 +100,7 @@ export function DeleteTransactionModal({
                 aria-hidden="true"
                 className={amount < 0 ? "text-feedback-error" : "text-primary"}
               >
-                {amount < 0 ? "- " : "+ "}
-                {formatted}
+                {formatSignedCurrency(amount)}
               </h3>
             </div>
           )}

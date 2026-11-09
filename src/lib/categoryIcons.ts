@@ -9,7 +9,7 @@ import {
   GraduationCap,
   type LucideIcon,
 } from "lucide-react";
-import type { Category } from "./api";
+import type { Category } from "@/domain";
 
 export const categoryIconMap: Record<string, LucideIcon> = {
   ShoppingBag,

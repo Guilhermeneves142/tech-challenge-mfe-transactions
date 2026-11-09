@@ -3,7 +3,8 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download, Pencil, Trash2 } from "lucide-react";
 import { Badge, Button } from "@vandrei/finance-ui";
-import type { Category, Transaction } from "@/lib/api";
+import type { Category, Transaction } from "@/domain";
+import { describeTransactionAmount, formatSignedCurrency } from "@/shared/formatters/currency";
 import { getCategoryIcon } from "@/lib/categoryIcons";
 
 function truncateText(text: string, limit: number) {
@@ -12,17 +13,15 @@ function truncateText(text: string, limit: number) {
 
 // Valor com sinal e cor: despesas em vermelho, receitas em verde da marca.
 function formatSigned(amount: number) {
-  const value = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
   return {
-    text: amount < 0 ? `- ${value}` : `+ ${value}`,
+    text: formatSignedCurrency(amount),
     colorClass: amount < 0 ? "text-feedback-error" : "text-primary",
   };
 }
 
 // Descrição acessível da transação para os aria-labels das ações.
 function describeTransaction({ description, amount }: Transaction) {
-  const value = `R$ ${Math.abs(amount).toFixed(2).replace(".", ",")}`;
-  return `${description}, ${amount < 0 ? "despesa" : "receita"} de ${value}`;
+  return describeTransactionAmount(description, amount);
 }
 
 interface ColumnHandlers {

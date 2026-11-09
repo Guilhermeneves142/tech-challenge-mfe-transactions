@@ -33,9 +33,9 @@ import type {
   TransactionModalProps,
 } from "@/components/transactions/types";
 import { useTransactionForm } from "@/components/transactions/hooks/useTransactionForm";
-import { useSelector } from "react-redux";
-import { downloadAttachment } from "@/lib/file";
-import { RootState } from "@/store";
+import { downloadAttachment } from "@/infra/browser/file";
+import { useCategories } from "@/lib/queries/transactions";
+import { DESCRIPTION_MAX_LENGTH } from "@/domain";
 
 export function TransactionModal({
   open,
@@ -63,9 +63,8 @@ export function TransactionModal({
     onClose: () => onOpenChange(false),
   });
 
-  const categories = useSelector(
-    (state: RootState) => state.categories.categories,
-  );
+  // Antes: Redux (cópia do que o React Query já tinha). Agora: direto do cache.
+  const { data: categories = [] } = useCategories();
 
   return (
     <Dialog
@@ -117,7 +116,7 @@ export function TransactionModal({
               className="rounded-lg"
               value={form.description}
               onChange={(e) => setField("description", e.target.value)}
-              maxLength={20}
+              maxLength={DESCRIPTION_MAX_LENGTH}
             />
           </div>
 
