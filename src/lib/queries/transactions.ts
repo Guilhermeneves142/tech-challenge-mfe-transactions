@@ -30,7 +30,13 @@ export function useTransactionsInfinite(filters: TransactionFilters) {
   return useInfiniteQuery({
     queryKey: transactionsKey(filters),
     queryFn: ({ pageParam }) =>
-      api.getTransactions({ ...filters, _page: pageParam, _limit: PAGE_SIZE }),
+      api.getTransactions({
+        ...filters,
+        _sort: "date",
+        _order: "desc",
+        _page: pageParam,
+        _limit: PAGE_SIZE,
+      }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) =>
       lastPage.length === PAGE_SIZE ? allPages.length + 1 : undefined,
