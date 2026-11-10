@@ -39,7 +39,13 @@ describe("listTransactions", () => {
   it("converte filtros em query paginada", async () => {
     const repo = fakeRepo();
     await makeListTransactions(repo, 10)({ description: "luz", type: "all" }, 2);
-    expect(repo.list).toHaveBeenCalledWith({ descriptionLike: "luz", page: 2, limit: 10 });
+    expect(repo.list).toHaveBeenCalledWith({
+      descriptionLike: "luz",
+      page: 2,
+      limit: 10,
+      sortBy: "date",
+      order: "desc",
+    });
   });
 
   it("próxima página só se a última veio cheia", () => {
